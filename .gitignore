@@ -1,0 +1,11 @@
+.DS_Store
+DerivedData/
+build/
+*.xcodeproj/
+xcuserdata/
+.build/
+__pycache__/
+*.xcworkspace/
+Resources/Info.plist
+default.profraw
+*.profraw
