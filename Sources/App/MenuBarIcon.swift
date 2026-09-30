@@ -12,7 +12,7 @@ enum MenuBarIcon {
     case update
   }
 
-  static let size = NSSize(width: 23, height: 18)
+  static let size = NSSize(width: 26, height: 20)
 
   /// Drawn on demand in the menu bar's own appearance, so the glyph takes the label colour
   /// there and the dot keeps its colour (a template image would tint the dot too).
@@ -28,10 +28,12 @@ enum MenuBarIcon {
 
   private static func draw(state: State) {
     guard let ctx = NSGraphicsContext.current?.cgContext else { return }
-    let scale: CGFloat = 0.86 // the 24-unit canvas at about 20.6 pt (the user asked for a touch bigger than the design's 18)
+    // The 24-unit canvas at full size: the glyph is 21 × 15 pt, the most the menu bar's
+    // 22 pt takes comfortably (the user asked for bigger than the design's 18 twice).
+    let scale: CGFloat = 1
     ctx.saveGState()
     ctx.setAlpha(state == .off ? 0.4 : 1)
-    ctx.translateBy(x: 0, y: 0)
+    ctx.translateBy(x: 1, y: -2)
     ctx.scaleBy(x: scale, y: scale)
     let ink = NSColor.labelColor
     ink.setStroke()
@@ -81,7 +83,7 @@ enum MenuBarIcon {
     default: nil
     }
     if let dotColor {
-      let center = NSPoint(x: 20, y: 3.5)
+      let center = NSPoint(x: 23, y: 3)
       ctx.saveGState()
       ctx.setBlendMode(.destinationOut)
       NSColor.black.setFill()
