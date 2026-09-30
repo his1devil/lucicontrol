@@ -50,6 +50,10 @@ final class PanelController: NSObject, NSWindowDelegate {
     window.makeKeyAndOrderFront(nil)
     installMonitors()
     if profiling { NSLog("panel: shown in %.1f ms", (CFAbsoluteTimeGetCurrent() - t0) * 1000) }
+    if ProcessInfo.processInfo.arguments.contains("--trace"), let screen = NSScreen.screens.first {
+      let f = window.frame
+      NSLog("panel: frame-cg %.0f %.0f %.0f %.0f", f.minX, screen.frame.height - f.maxY, f.width, f.height)
+    }
   }
 
   func hide() {

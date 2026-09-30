@@ -53,6 +53,12 @@ final class PanelModel {
 
   var isDemo = false
 
+  /// The daemon behind the panel; nil in `--demo`, where actions edit the sample data.
+  @ObservationIgnored var backend: DaemonBackend?
+
+  /// The last request that failed, shown in the footer for a moment.
+  var lastError: String?
+
   /// True while a system dialog opened from the panel is up, so the panel stays open.
   var modalActive = false
 
@@ -133,6 +139,7 @@ final class PanelModel {
   func toggleSession(_ id: String) {
     guard let i = sessions.firstIndex(where: { $0.id == id }) else { return }
     sessions[i].shared.toggle()
+    backend?.setSessionShared(id, sessions[i].shared)
   }
 
   func toggleExpanded(_ dir: SharedDirectory) {
@@ -142,16 +149,20 @@ final class PanelModel {
   func setNewSessionsShared(_ dir: SharedDirectory, _ on: Bool) {
     guard let i = directories.firstIndex(where: { $0.id == dir.id }) else { return }
     directories[i].sharesNewSessions = on
+    backend?.saveDirectories()
   }
 
   func removeDirectory(_ dir: SharedDirectory) {
     directories.removeAll { $0.id == dir.id }
+    backend?.saveDirectories()
   }
 
   func togglePause() {
     switch sharing {
-    case .sharing, .connecting: sharing = .paused
-    case .paused: sharing = .sharing
+    case .sharing, .connecting:
+      if let backend { backend.setPaused(true) } else { sharing = .paused }
+    case .paused:
+      if let backend { backend.setPaused(false) } else { sharing = .sharing }
     default: break
     }
   }
@@ -159,16 +170,25 @@ final class PanelModel {
   func toggleDeviceBlocked(_ id: String) {
     guard let i = devices.firstIndex(where: { $0.id == id }) else { return }
     devices[i].blocked.toggle()
+    backend?.setDeviceBlocked(id, devices[i].blocked)
   }
 
   func removeDevice(_ id: String) {
     guard let i = devices.firstIndex(where: { $0.id == id }) else { return }
+    if let backend {
+      backend.removeDevice(id)
+      return
+    }
     devices[i].blocked = true
     devices[i].removed = true
   }
 
   func restoreDevice(_ id: String) {
     guard let i = devices.firstIndex(where: { $0.id == id }) else { return }
+    if let backend {
+      backend.restoreDevice(id)
+      return
+    }
     devices[i].blocked = false
     devices[i].removed = false
   }
@@ -180,6 +200,7 @@ final class PanelModel {
     addShareExisting = true
     addShareNew = false
     page = .add
+    backend?.refreshCandidates()
   }
 
   func toggleCandidate(_ path: String) {
@@ -189,6 +210,12 @@ final class PanelModel {
   func commitAdd() {
     var paths = Array(addSelected)
     if !addPath.isEmpty { paths.append(addPath) }
+    if let backend {
+      backend.addDirectories(paths, shareExisting: addShareExisting, shareNew: addShareNew)
+      agent = addAgent
+      page = .home
+      return
+    }
     for p in paths where !directories.contains(where: { $0.path == p }) {
       directories.append(SharedDirectory(path: p, agent: addAgent, sharesNewSessions: addShareNew))
       if !addShareExisting {
@@ -200,8 +227,18 @@ final class PanelModel {
   }
 
   func startPairing() {
-    pairing = .waiting(code: "A7K3QD", payload: "lucirun://pair?code=A7K3QD&relay=https%3A%2F%2Fim.zhanghuanyang.com%2Flucirund", expiresAt: Date().addingTimeInterval(292))
     page = .pair
+    if let backend {
+      backend.startPairing()
+      return
+    }
+    pairing = .waiting(code: "A7K3QD", payload: "lucirun://pair?code=A7K3QD&relay=https%3A%2F%2Fim.zhanghuanyang.com%2Flucirund", expiresAt: Date().addingTimeInterval(292))
+  }
+
+  func cancelPairing() {
+    backend?.cancelPairing()
+    pairing = .idle
+    page = .home
   }
 
   /// Demo only: pretend the phone claimed the code.
@@ -212,6 +249,11 @@ final class PanelModel {
 
   func confirmPairing(accept: Bool) {
     guard case .claimed(_, let user, let device) = pairing else { return }
+    if let backend {
+      backend.confirmPairing(accept: accept)
+      if !accept { page = .home }
+      return
+    }
     if accept {
       pairing = .done(user: user, deviceLabel: device)
       if sharing == .unpaired { sharing = .sharing }

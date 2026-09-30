@@ -9,7 +9,7 @@ struct PairView: View {
   var body: some View {
     @Bindable var model = model
     VStack(spacing: 0) {
-      BackHeader(title: "连接手机") { model.pairing = .idle; model.page = .home }
+      BackHeader(title: "连接手机") { model.cancelPairing() }
       switch model.pairing {
       case .waiting(let code, let payload, let expiresAt):
         VStack(spacing: 18) {
@@ -82,7 +82,6 @@ struct PairView: View {
           Text("正在准备连接码…").font(.ui(10.5)).foregroundStyle(DS.ink2)
         }
         .padding(24)
-        .onAppear { model.startPairing() }
       }
     }
   }

@@ -3,7 +3,10 @@ import LuciControlCore
 import SwiftUI
 
 /// Flags for development and screenshots:
-///   --demo               sample data instead of a daemon (the only mode in stage 1)
+///   --demo               sample data instead of a daemon
+///   --daemon <path>      the lucirund to run (default: the one in the app bundle)
+///   --data-dir <dir>     LUCIRUND_DIR for the daemon (an isolated identity and config)
+///   --relay <base>       relay to pair through (default: the daemon's)
 ///   --window             the panel in an ordinary window instead of under the icon
 ///   --page <name>        home | add | pair | devices | settings | codex-missing
 ///   --appearance dark    force dark (or light)
@@ -15,6 +18,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private var panel: PanelController!
   private var statusItem: StatusItemController?
   private var window: NSWindow?
+  private var backend: DaemonBackend?
 
   static func main() {
     let app = NSApplication.shared
@@ -33,7 +37,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     if let appearance = value("--appearance") {
       NSApp.appearance = NSAppearance(named: appearance == "dark" ? .darkAqua : .aqua)
     }
-    model = PanelModel.demo()
+    if args.contains("--demo") {
+      model = PanelModel.demo()
+    } else {
+      model = PanelModel()
+      let bundled = Bundle.main.bundleURL.appendingPathComponent("Contents/MacOS/lucirund")
+      let exe = value("--daemon").map { URL(fileURLWithPath: $0) } ?? bundled
+      backend = DaemonBackend(model: model, executable: exe, dataDir: value("--data-dir"), relay: value("--relay"))
+      backend?.testAutoConfirm = args.contains("--test-auto-confirm")
+      if let dir = value("--test-add-dir") { backend?.addDirectories([dir], shareExisting: true, shareNew: false) }
+    }
     if let page = value("--page") {
       switch page {
       case "add": model.openAdd()
@@ -58,6 +71,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     if args.contains("--window") { model.panelVisible = true }
     panel = PanelController(model: model)
     panel.profiling = args.contains("--profile")
+    backend?.start()
     if let dir = value("--icons") {
       Self.writeIcons(to: dir)
       exit(0)
@@ -97,7 +111,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
           }
           if let path = value("--snapshot") {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.3) { [self] in
+            let delay = Double(value("--snapshot-delay") ?? "") ?? 1.3
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [self] in
               if let view = panel.contentViewForSnapshot { Self.snapshot(view, to: path) }
               exit(0)
             }
@@ -117,7 +132,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     alert.addButton(withTitle: "退出")
     alert.addButton(withTitle: "取消")
     NSApp.activate(ignoringOtherApps: true)
-    return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
+    guard alert.runModal() == .alertFirstButtonReturn else { return .terminateCancel }
+    guard let backend else { return .terminateNow }
+    // Let the daemon tell the phones and close down before we go.
+    Task {
+      await backend.stop()
+      NSApp.reply(toApplicationShouldTerminate: true)
+    }
+    return .terminateLater
   }
 
   /// The four menu bar icon states at 4x, light and dark, for a look at the drawing.

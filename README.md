@@ -24,3 +24,5 @@ scripts/make-icons.sh                               # 从设计稿的 SVG 重新
 
 调试参数：`--demo` 示例数据；`--window` 面板放进普通窗口；`--page home|empty|claude|add|pair|devices|settings|codex-missing`；
 `--pair-state code|claimed|done`；`--appearance light|dark`；`--snapshot <png>`；`--open` 启动就打开面板；`--open --profile` 打印打开面板和切换页面的耗时；`--icons <目录>` 输出菜单栏图标的四种状态。
+
+测试参数（接真实守护进程时）：`--test-auto-confirm` 手机认领后自动确认；`--test-add-dir <路径>` 启动后共享这个目录。

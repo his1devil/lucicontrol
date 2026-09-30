@@ -26,6 +26,19 @@ targets:
       - path: Resources
     dependencies:
       - package: LuciControlCore
+    preBuildScripts:
+      - name: Build lucirund
+        script: "\"$SRCROOT/scripts/build-daemon.sh\""
+        outputFiles: ["$(SRCROOT)/build/lucirund"]
+        basedOnDependencyAnalysis: false
+    postBuildScripts:
+      - name: Bundle lucirund
+        script: |
+          mkdir -p "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH"
+          cp -f "$SRCROOT/build/lucirund" "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH/lucirund"
+          codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --options runtime "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH/lucirund" 2>/dev/null || true
+        inputFiles: ["$(SRCROOT)/build/lucirund"]
+        outputFiles: ["$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/lucirund"]
     info:
       path: Resources/Info.plist
       properties:
