@@ -45,6 +45,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       let exe = value("--daemon").map { URL(fileURLWithPath: $0) } ?? bundled
       backend = DaemonBackend(model: model, executable: exe, dataDir: value("--data-dir"), relay: value("--relay"))
       backend?.testAutoConfirm = args.contains("--test-auto-confirm")
+      backend?.takeOverAtStart = args.contains("--takeover")
       if let dir = value("--test-add-dir") { backend?.addDirectories([dir], shareExisting: true, shareNew: false) }
     }
     if let page = value("--page") {

@@ -9,7 +9,9 @@ import ServiceManagement
 enum LoginItem {
   static let plistName = "com.his1devil.lucicontrol.plist"
 
-  private static var service: SMAppService { .agent(plistName: plistName) }
+  /// The plain login item. The agent plist in the bundle (crash restart) is not used yet:
+  /// registering an agent whose RunAtLoad is true starts a second copy of a running app.
+  private static var service: SMAppService { .mainApp }
 
   static var isEnabled: Bool { service.status == .enabled }
 

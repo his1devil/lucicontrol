@@ -25,6 +25,8 @@ final class DaemonBackend {
   /// Test switches (`--test-auto-confirm`, `--test-add-dir`): the panel cannot be clicked
   /// from a script, so these do what the person would.
   var testAutoConfirm = false
+  /// `--takeover`: stop the command-line service at start without showing the page.
+  var takeOverAtStart = false
   /// Called when the panel should come forward on its own: the first run, and the takeover.
   var showPanel: (() -> Void)?
   private var firstReadyHandled = false
@@ -46,6 +48,10 @@ final class DaemonBackend {
     model.takeover = { [weak self] in self?.takeOverLegacy() }
     // An isolated data directory (development) has nothing to do with the old service.
     if !isolated, LegacyService.isInstalled {
+      if takeOverAtStart {
+        takeOverLegacy()
+        return
+      }
       // The command-line service would fight our daemon over the relay: settle that first.
       model.sharing = .error("命令行版的 lucirund 还在运行")
       model.page = .takeover
