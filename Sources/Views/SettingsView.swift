@@ -38,7 +38,7 @@ struct SettingsView: View {
 
           VStack(alignment: .leading, spacing: 4) {
             SectionLabel(text: "通用")
-            ToggleRow(title: "开机时启动 LuciControl", detail: "登录 macOS 后自动在菜单栏运行；不开着就没有共享", isOn: model.launchAtLogin) { model.launchAtLogin.toggle() }
+            ToggleRow(title: "开机时启动 LuciControl", detail: "登录 macOS 后自动在菜单栏运行；不开着就没有共享", isOn: model.launchAtLogin) { model.setLaunchAtLogin(!model.launchAtLogin) }
             ToggleRow(title: "更新可用时提示", detail: "在菜单栏图标和面板底部显示提示", isOn: model.updateHints) { model.updateHints.toggle() }
           }
 

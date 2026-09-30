@@ -189,6 +189,12 @@ public struct MachineInfo: Hashable, Codable, Sendable {
   }
 }
 
+/// Why the daemon cannot use Codex on this Mac.
+public enum CodexProblem: Equatable, Sendable {
+  case missing
+  case notLoggedIn
+}
+
 /// The pairing flow's states, in order.
 public enum PairingState: Equatable, Sendable {
   case idle

@@ -10,6 +10,8 @@ enum PanelPage: Equatable {
   case devices
   case settings
   case codexMissing
+  /// A lucirund installed from the command line is still running as a service.
+  case takeover
 }
 
 /// Everything the panel draws and every action it can take. In `--demo` the actions edit
@@ -58,6 +60,15 @@ final class PanelModel {
 
   /// The last request that failed, shown in the footer for a moment.
   var lastError: String?
+
+  /// What is wrong with Codex on this Mac, when something is.
+  var codexProblem: CodexProblem = .missing
+
+  /// The signed-in Codex account, when known.
+  var codexAccount = ""
+
+  /// What the takeover page says and does.
+  var takeover: (() -> Void)?
 
   /// True while a system dialog opened from the panel is up, so the panel stays open.
   var modalActive = false
@@ -211,9 +222,13 @@ final class PanelModel {
     var paths = Array(addSelected)
     if !addPath.isEmpty { paths.append(addPath) }
     if let backend {
+      // Reading each folder once now makes macOS ask for permission (桌面、文稿、下载…)
+      // while the person is at the Mac, not later when a phone runs something there.
+      for p in paths { _ = try? FileManager.default.contentsOfDirectory(atPath: p) }
       backend.addDirectories(paths, shareExisting: addShareExisting, shareNew: addShareNew)
       agent = addAgent
       page = .home
+      backend.offerLoginItemOnce()
       return
     }
     for p in paths where !directories.contains(where: { $0.path == p }) {
@@ -266,6 +281,17 @@ final class PanelModel {
   func finishPairing() {
     pairing = .idle
     page = directories.isEmpty ? .add : .home
+  }
+
+  func setLaunchAtLogin(_ on: Bool) {
+    launchAtLogin = on
+    guard !isDemo else { return }
+    do {
+      try LoginItem.set(on)
+    } catch {
+      lastError = "开机启动设置失败：\(error.localizedDescription)"
+      launchAtLogin = LoginItem.isEnabled
+    }
   }
 
   func checkForUpdates() {

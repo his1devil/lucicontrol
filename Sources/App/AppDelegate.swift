@@ -63,6 +63,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       case "settings-latest": model.page = .settings; model.update = .latest(checkedAt: Date())
       case "settings-downloading": model.page = .settings; model.update = .downloading(version: "0.2.0", progress: 0.45)
       case "codex-missing": model.page = .codexMissing
+      case "codex-login": model.codexProblem = .notLoggedIn; model.page = .codexMissing
+      case "takeover": model.page = .takeover
       case "empty": model.directories = []
       case "claude": model.agent = .claudeCode
       default: break
@@ -76,10 +78,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       Self.writeIcons(to: dir)
       exit(0)
     }
+    if let what = value("--login-item") {
+      // Development check of the launch-agent registration: on | off | status.
+      if what == "on" { try? LoginItem.set(true) }
+      if what == "off" { try? LoginItem.set(false) }
+      print("login item: \(LoginItem.statusText) (plist in bundle: \(LoginItem.isAvailable))")
+      exit(0)
+    }
     if args.contains("--window") {
       showInWindow()
     } else {
       statusItem = StatusItemController(panel: panel, model: model)
+      backend?.showPanel = { [weak self] in
+        guard let self else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { self.panel.show(anchor: self.statusItem?.buttonFrameOnScreen) }
+      }
       if args.contains("--open") {
         // Open the panel under the icon right away, for a look at the real panel window.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [self] in

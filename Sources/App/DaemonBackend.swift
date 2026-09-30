@@ -18,16 +18,21 @@ final class DaemonBackend {
   }
   private var lastDevices: [WireDevice] = []
   private let relay: String?
+  private let isolated: Bool
   /// Things asked for before the daemon was ready, run on `ready`.
   private var whenReady: [() -> Void] = []
   private var ready = false
   /// Test switches (`--test-auto-confirm`, `--test-add-dir`): the panel cannot be clicked
   /// from a script, so these do what the person would.
   var testAutoConfirm = false
+  /// Called when the panel should come forward on its own: the first run, and the takeover.
+  var showPanel: (() -> Void)?
+  private var firstReadyHandled = false
 
   init(model: PanelModel, executable: URL, dataDir: String?, relay: String?) {
     self.model = model
     self.relay = relay
+    isolated = dataDir != nil
     var env: [String: String] = [:]
     if let dataDir { env["LUCIRUND_DIR"] = dataDir }
     process = DaemonProcess(executable: executable, environment: env, onEvent: { [weak self] e in self?.event(e) }, onPush: { [weak self] msg in
@@ -37,8 +42,56 @@ final class DaemonBackend {
   }
 
   func start() {
+    model.launchAtLogin = LoginItem.isEnabled
+    model.takeover = { [weak self] in self?.takeOverLegacy() }
+    // An isolated data directory (development) has nothing to do with the old service.
+    if !isolated, LegacyService.isInstalled {
+      // The command-line service would fight our daemon over the relay: settle that first.
+      model.sharing = .error("命令行版的 lucirund 还在运行")
+      model.page = .takeover
+      showPanel?()
+      return
+    }
     model.sharing = .starting
     process.start()
+  }
+
+  /// Stops the old service and starts our own daemon in its place.
+  func takeOverLegacy() {
+    do {
+      try LegacyService.takeOver()
+    } catch {
+      model.lastError = "接管失败：\(error.localizedDescription)"
+      return
+    }
+    model.page = .home
+    model.sharing = .starting
+    process.start()
+  }
+
+  func recheckCodex() {
+    model.page = .home
+    // A restart re-resolves codex and asks account/read again.
+    Task {
+      await process.stop()
+      process.start()
+    }
+  }
+
+  /// After the first folder is shared, ask once whether to start at login (on by default).
+  func offerLoginItemOnce() {
+    let key = "askedLoginItem"
+    guard !UserDefaults.standard.bool(forKey: key), LoginItem.isAvailable, !LoginItem.isEnabled else { return }
+    UserDefaults.standard.set(true, forKey: key)
+    let alert = NSAlert()
+    alert.messageText = "开机时启动 LuciControl？"
+    alert.informativeText = "LuciControl 开着，手机才连得上这台 Mac。登录 macOS 后自动在菜单栏运行，之后可以在设置里改。"
+    alert.addButton(withTitle: "开启")
+    alert.addButton(withTitle: "不用")
+    NSApp.activate(ignoringOtherApps: true)
+    if alert.runModal() == .alertFirstButtonReturn {
+      model.setLaunchAtLogin(true)
+    }
   }
 
   func stop() async {
@@ -53,8 +106,10 @@ final class DaemonBackend {
     switch e {
     case .started:
       model.sharing = .starting
-    case .exited(_, let restartIn):
+    case .exited(let code, let restartIn):
+      if model.page == .takeover { return }
       model.sharing = restartIn == nil ? .paused : .starting
+      if code != 0, let restartIn { model.lastError = "lucirund 退出了（\(code)），\(Int(restartIn)) 秒后重试" }
     case .fatal(let msg):
       model.sharing = .error(msg)
     }
@@ -63,6 +118,7 @@ final class DaemonBackend {
   private func push(_ msg: DaemonMessage) {
     switch msg.op {
     case "ready", "status":
+      model.lastError = nil
       if let m = msg.machine { machine = m; shares = m.shares }
       if let s = msg.state { state = s }
       applyStatus()
@@ -74,6 +130,14 @@ final class DaemonBackend {
         let queued = whenReady
         whenReady = []
         queued.forEach { $0() }
+        if !firstReadyHandled {
+          firstReadyHandled = true
+          // A machine that is not paired yet goes straight to the pairing page, in front.
+          if let s = msg.state, !s.paired, model.page == .home {
+            model.startPairing()
+            showPanel?()
+          }
+        }
       }
     case "threads":
       applyThreads(msg.threads ?? [])
@@ -86,6 +150,10 @@ final class DaemonBackend {
       }
     case "fatal":
       model.sharing = .error(msg.msg ?? msg.code ?? "lucirund 退出了")
+      if msg.code == "already-running" {
+        // Another lucirund holds the lock: the command-line service, or an older copy of us.
+        model.page = .takeover
+      }
     case "closed":
       if case .error = model.sharing { return }
       model.sharing = .starting
@@ -99,7 +167,12 @@ final class DaemonBackend {
     model.sharing = Mapping.sharing(state: state, machine: machine)
     model.machine = Mapping.machine(state: state, machine: machine, appVersion: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev")
     model.directories = shares.map(Mapping.directory)
+    model.codexAccount = state.agent.account ?? ""
     if !state.agent.found {
+      model.codexProblem = .missing
+      model.page = .codexMissing
+    } else if state.agent.loggedIn == false {
+      model.codexProblem = .notLoggedIn
       model.page = .codexMissing
     } else if model.page == .codexMissing {
       model.page = .home

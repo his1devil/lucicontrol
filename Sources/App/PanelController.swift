@@ -89,13 +89,18 @@ final class PanelController: NSObject, NSWindowDelegate {
 
     let container = PanelBackgroundView(frame: window.contentRect(forFrameRect: window.frame))
     container.autoresizingMask = [.width, .height]
-    // The page sits at the top of the window; the window then takes the page's height.
+    // The page sits at the top of the window and is laid out at its own ideal height
+    // (`fixedSize`), never squeezed into the window's current height: a squeezed page
+    // would report the squeezed size and the window would never grow to fit it. The
+    // window then takes the page's height.
     let root = ZStack(alignment: .top) {
-      PanelRoot().environment(model).onGeometryChange(for: CGSize.self) { $0.size } action: { [weak self, weak window] size in
-        guard let window else { return }
-        if ProcessInfo.processInfo.arguments.contains("--trace") { NSLog("root: size %.0f x %.0f", size.width, size.height) }
-        self?.resize(window, to: size)
-      }
+      PanelRoot().environment(model)
+        .fixedSize(horizontal: false, vertical: true)
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { [weak self, weak window] size in
+          guard let window else { return }
+          if ProcessInfo.processInfo.arguments.contains("--trace") { NSLog("root: size %.0f x %.0f", size.width, size.height) }
+          self?.resize(window, to: size)
+        }
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     let hosting = NSHostingView(rootView: root)

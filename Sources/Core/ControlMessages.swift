@@ -98,6 +98,9 @@ public struct WireState: Decodable, Sendable {
     public var version: String?
     public var mode: String?
     public var error: String?
+    /// nil until the daemon asked Codex; false means nobody is signed in there.
+    public var loggedIn: Bool?
+    public var account: String?
   }
   public var paired: Bool
   public var owner: String?

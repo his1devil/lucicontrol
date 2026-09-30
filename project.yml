@@ -24,6 +24,7 @@ targets:
       - path: Sources/App
       - path: Sources/Views
       - path: Resources
+        excludes: [LaunchAgents]
     dependencies:
       - package: LuciControlCore
     preBuildScripts:
@@ -39,6 +40,12 @@ targets:
           codesign --force --sign "${EXPANDED_CODE_SIGN_IDENTITY:--}" --options runtime "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH/lucirund" 2>/dev/null || true
         inputFiles: ["$(SRCROOT)/build/lucirund"]
         outputFiles: ["$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/lucirund"]
+      - name: Bundle launch agent
+        script: |
+          mkdir -p "$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Library/LaunchAgents"
+          cp -f "$SRCROOT/Resources/LaunchAgents/com.his1devil.lucicontrol.plist" "$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Library/LaunchAgents/"
+        inputFiles: ["$(SRCROOT)/Resources/LaunchAgents/com.his1devil.lucicontrol.plist"]
+        outputFiles: ["$(TARGET_BUILD_DIR)/$(CONTENTS_FOLDER_PATH)/Library/LaunchAgents/com.his1devil.lucicontrol.plist"]
     info:
       path: Resources/Info.plist
       properties:
