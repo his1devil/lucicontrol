@@ -6,7 +6,7 @@
 
 LuciControl.app 包含 lucirund，Sparkle 2.10.0 升级整个 App。手机配对、身份、共享目录保存在 `~/Library/Application Support/lucirund`，安装脚本和更新器不删除该目录。旧 CLI LaunchAgent 需要经过 App 的接管流程，不能同时运行两套 daemon。
 
-主更新源固定为 `https://im.zhanghuanyang.com/lucirund/dist/appcast.xml`。版本文件先部署到同一下载站，再原子替换 appcast。正式下载站已发布 0.1.1 (3)，公开 DMG 与 ZIP 完整下载后的 SHA256 与本机一致；线上 appcast 返回 200、`application/xml` 与 `no-cache, max-age=0, must-revalidate`，版本、大小和 Ed25519 签名核对通过。维护者已授权公开源码与版本标签，GitHub Release 正在准备，使用与主下载站完全相同的签名包。客户端没有自动切换镜像；国内、海外网络质量仍需分别实测。
+主更新源固定为 `https://im.zhanghuanyang.com/lucirund/dist/appcast.xml`。版本文件先部署到同一下载站，再原子替换 appcast。正式下载站已发布 0.1.1 (3)，公开 DMG 与 ZIP 完整下载后的 SHA256 与本机一致；线上 appcast 返回 200、`application/xml` 与 `no-cache, max-age=0, must-revalidate`，版本、大小和 Ed25519 签名核对通过。维护者已授权公开源码与版本标签；[GitHub Release v0.1.1](https://github.com/his1devil/lucicontrol/releases/tag/v0.1.1) 已发布，使用与主下载站完全相同的签名包，匿名完整下载后的 SHA256 核对通过。客户端没有自动切换镜像；国内、海外网络质量仍需分别实测。
 
 首次安装用 DMG，将 App 拖入 Applications。安装窗口参考 `yptd-desktop`：白底、600 × 380 点窗口、左右 120 点图标，紫色弧形箭头像笑脸并指向 Applications；顶部提供中英双语拖拽提示。Applications 是指向系统应用目录的真实快捷入口，背景包含 1x / 2x 分辨率。已经安装的 0.1.0 没有 Sparkle，需要先手动安装一次新版本，后续才能收到自动更新。手机继续使用 Luci Run 内部 TestFlight；这份 Mac 包不走 TestFlight。
 
@@ -72,6 +72,7 @@ SPARKLE_TOOLS=/path/to/Sparkle/bin scripts/release.sh
 
 - [安装包：LuciControl 0.1.1 (3) Universal DMG](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.1.1-3-universal.dmg)
 - [更新包 ZIP](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.1.1-3.zip)
+- [GitHub 备用下载](https://github.com/his1devil/lucicontrol/releases/download/v0.1.1/LuciControl-0.1.1-3-universal.dmg)
 - [SHA256 校验文件](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.1.1-3.sha256)
 - [自动更新清单](https://im.zhanghuanyang.com/lucirund/dist/appcast.xml)
 
@@ -95,7 +96,7 @@ SPARKLE_TOOLS=/path/to/Sparkle/bin scripts/release.sh
 - 新版本检查显示“已是最新版本”；更新源停止后显示失败和重试，旧 App 保持可用。
 - 自动检查、自动下载、更新提示开关在正常退出和重新启动后保留。
 
-详细证据在 `build/releases/0.1.1-3/validation.json` 与 `update-validation/`。这证明隔离环境中的安装链路，不能替代真实 lucirund、手机重连、全新用户配对和 Intel 真机验收。正式下载源现已上线；GitHub Release 正在准备。本轮没有替换 `/Applications/LuciControl.app`。
+详细证据在 `build/releases/0.1.1-3/validation.json` 与 `update-validation/`。这证明隔离环境中的安装链路，不能替代真实 lucirund、手机重连、全新用户配对和 Intel 真机验收。正式下载源现已上线；GitHub Release 及源码标签现已公开。本轮没有替换 `/Applications/LuciControl.app`。
 
 ## 后续发布顺序与尚待验收
 
