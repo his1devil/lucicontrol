@@ -110,7 +110,8 @@ public final class DaemonProcess {
   }
 }
 
-/// Runs `body` with a deadline; on timeout it throws `ControlError.closed`.
+/// Runs a cancellation-cooperative `body` with a deadline; on timeout it throws
+/// `ControlError.closed`. The losing task must finish before the group can return.
 func withTimeout<T: Sendable>(seconds: Double, _ body: @escaping @Sendable () async throws -> T) async throws -> T {
   try await withThrowingTaskGroup(of: T.self) { group in
     group.addTask { try await body() }
@@ -118,8 +119,7 @@ func withTimeout<T: Sendable>(seconds: Double, _ body: @escaping @Sendable () as
       try await Task.sleep(for: .seconds(seconds))
       throw ControlError.closed
     }
-    let first = try await group.next()!
-    group.cancelAll()
-    return first
+    defer { group.cancelAll() }
+    return try await group.next()!
   }
 }

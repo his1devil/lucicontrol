@@ -42,7 +42,8 @@ public actor ControlClient {
 
   public func stop() {
     reader?.cancel()
-    closed = true
+    reader = nil
+    closeAll(with: ControlError.closed)
   }
 
   /// One request; the reply's `result`, or the daemon's error.
@@ -51,15 +52,26 @@ public actor ControlClient {
     let id = nextID
     nextID += 1
     let data = try JSONEncoder().encode(RPCRequest(id: id, method: method, params: params))
-    return try await withCheckedThrowingContinuation { c in
-      pending[id] = c
-      do {
-        try output.write(contentsOf: data + Data([0x0a]))
-      } catch {
-        pending[id] = nil
-        c.resume(throwing: error)
+    return try await withTaskCancellationHandler {
+      // Check inside the operation too: cancellation may precede registration.
+      try Task.checkCancellation()
+      return try await withCheckedThrowingContinuation { c in
+        pending[id] = c
+        do {
+          try output.write(contentsOf: data + Data([0x0a]))
+        } catch {
+          pending[id] = nil
+          c.resume(throwing: error)
+        }
       }
+    } onCancel: {
+      // Actor isolation serializes cancellation with registration and replies.
+      Task { await self.cancelRequest(id) }
     }
+  }
+
+  private func cancelRequest(_ id: Int) {
+    pending.removeValue(forKey: id)?.resume(throwing: CancellationError())
   }
 
   private func dispatch(_ msg: DaemonMessage) {
@@ -75,6 +87,7 @@ public actor ControlClient {
   }
 
   private func closeAll(with error: ControlError) {
+    guard !closed else { return }
     closed = true
     for (_, c) in pending { c.resume(throwing: error) }
     pending = [:]

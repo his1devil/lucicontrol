@@ -19,6 +19,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private var statusItem: StatusItemController?
   private var window: NSWindow?
   private var backend: DaemonBackend?
+  private var updater: UpdateController?
+  private var terminationPending = false
 
   static func main() {
     let app = NSApplication.shared
@@ -29,6 +31,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
+    // Unit-test hosts must not start a daemon or check the live update feed.
+    if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+      model = PanelModel()
+      return
+    }
     let args = CommandLine.arguments
     func value(_ flag: String) -> String? {
       guard let i = args.firstIndex(of: flag), i + 1 < args.count else { return nil }
@@ -75,6 +82,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     panel = PanelController(model: model)
     panel.profiling = args.contains("--profile")
     backend?.start()
+    // Isolated daemon runs and UI fixtures never use the production update feed.
+    if !model.isDemo, value("--data-dir") == nil,
+       !args.contains("--login-item"), !args.contains("--icons") {
+      updater = UpdateController(model: model)
+    }
     if let dir = value("--icons") {
       Self.writeIcons(to: dir)
       exit(0)
@@ -139,15 +151,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   /// Quitting switches sharing off, so it always asks first; with a phone connected or a
   /// phone-started turn running the message says what stops.
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-    let alert = NSAlert()
-    alert.messageText = "退出 LuciControl？"
-    alert.informativeText = model.quitWarning
-    alert.alertStyle = .warning
-    alert.addButton(withTitle: "退出")
-    alert.addButton(withTitle: "取消")
-    NSApp.activate(ignoringOtherApps: true)
-    guard alert.runModal() == .alertFirstButtonReturn else { return .terminateCancel }
+    if terminationPending { return .terminateLater }
+    // Sparkle already asked to install. Active sessions still require explicit consent
+    // when a quit happens outside its postponed-relaunch path.
+    if updater?.isRestarting != true || model.hasActiveSessions {
+      let alert = NSAlert()
+      alert.messageText = "退出 LuciControl？"
+      alert.informativeText = model.quitWarning
+      alert.alertStyle = .warning
+      alert.addButton(withTitle: "退出")
+      alert.addButton(withTitle: "取消")
+      NSApp.activate(ignoringOtherApps: true)
+      guard alert.runModal() == .alertFirstButtonReturn else { return .terminateCancel }
+    }
     guard let backend else { return .terminateNow }
+    terminationPending = true
     // Let the daemon tell the phones and close down before we go.
     Task {
       await backend.stop()

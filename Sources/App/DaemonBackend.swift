@@ -38,7 +38,7 @@ final class DaemonBackend {
     var env: [String: String] = [:]
     if let dataDir { env["LUCIRUND_DIR"] = dataDir }
     process = DaemonProcess(executable: executable, environment: env, onEvent: { [weak self] e in self?.event(e) }, onPush: { [weak self] msg in
-      Task { @MainActor in self?.push(msg) }
+      Task { @MainActor in self?.receive(msg) }
     })
     model.backend = self
   }
@@ -77,6 +77,7 @@ final class DaemonBackend {
 
   func recheckCodex() {
     model.page = .home
+    ready = false
     // A restart re-resolves codex and asks account/read again.
     Task {
       await process.stop()
@@ -111,8 +112,10 @@ final class DaemonBackend {
   private func event(_ e: DaemonProcess.Event) {
     switch e {
     case .started:
+      ready = false
       model.sharing = .starting
     case .exited(let code, let restartIn):
+      ready = false
       if model.page == .takeover { return }
       model.sharing = restartIn == nil ? .paused : .starting
       if code != 0, let restartIn { model.lastError = "lucirund 退出了（\(code)），\(Int(restartIn)) 秒后重试" }
@@ -121,7 +124,7 @@ final class DaemonBackend {
     }
   }
 
-  private func push(_ msg: DaemonMessage) {
+  func receive(_ msg: DaemonMessage) {
     switch msg.op {
     case "ready", "status":
       model.lastError = nil
@@ -136,13 +139,14 @@ final class DaemonBackend {
         let queued = whenReady
         whenReady = []
         queued.forEach { $0() }
-        if !firstReadyHandled {
-          firstReadyHandled = true
-          // A machine that is not paired yet goes straight to the pairing page, in front.
-          if let s = msg.state, !s.paired, model.page == .home {
-            model.startPairing()
-            showPanel?()
-          }
+      }
+      // A missing/logged-out Codex detour must not consume first-run pairing.
+      // Resume on either ready or a later status after Codex becomes available.
+      if ready, !firstReadyHandled, let state, model.page == .home {
+        firstReadyHandled = true
+        if !state.paired {
+          model.startPairing()
+          showPanel?()
         }
       }
     case "threads":

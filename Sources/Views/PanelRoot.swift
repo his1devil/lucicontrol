@@ -64,7 +64,7 @@ struct FooterBar: View {
 
       Spacer(minLength: 4)
 
-      if model.update.pendingVersion != nil {
+      if model.update.pendingVersion != nil, model.updateHints {
         FooterIcon(symbol: "arrow.down.to.line", size: 13, color: DS.accentText, help: "有新版本") { model.page = .settings }
       }
       FooterIcon(symbol: "iphone", size: 13, help: model.sharing == .unpaired ? "连接手机" : "设备") {

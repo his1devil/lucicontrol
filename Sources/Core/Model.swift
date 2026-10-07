@@ -152,19 +152,22 @@ public struct DirectoryCandidate: Identifiable, Hashable, Codable, Sendable {
   }
 }
 
-/// Where the app's own update stands (Sparkle drives this later).
+/// Where the app's own update stands, driven by Sparkle callbacks.
 public enum UpdateState: Equatable, Sendable {
+  case unchecked
+  case failed(message: String)
+  case deferred(version: String)
   case latest(checkedAt: Date)
   case checking
   case available(version: String, notes: [String])
-  case downloading(version: String, progress: Double)
+  case downloading(version: String, progress: Double?)
   case ready(version: String, notes: [String])
   case installing
 
   /// The version an update would bring, if one is known.
   public var pendingVersion: String? {
     switch self {
-    case .available(let v, _), .downloading(let v, _), .ready(let v, _): v
+    case .available(let v, _), .downloading(let v, _), .ready(let v, _), .deferred(let v): v
     default: nil
     }
   }

@@ -3,6 +3,18 @@
 lucirund 的 macOS 菜单栏 App：决定哪些目录和 Codex 会话对手机（Luci Run）可见，显示会话状态，
 完成配对、设备管理和更新。
 
+## 下载与安装
+
+[下载 LuciControl 0.1.1 (3)](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.1.1-3-universal.dmg) · [GitHub 备用下载与更新说明](https://github.com/his1devil/lucicontrol/releases/tag/v0.1.1) · [文件校验值](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.1.1-3.sha256)
+
+macOS 14+，Universal（Apple 芯片 / Intel）。打开 DMG，沿笑脸箭头将 LuciControl 拖入 Applications。
+首次启动按提示准备并登录 Codex，再用手机上的 Luci Run 配对。旧版 0.1.0 需要手动安装本版一次，之后可在设置里检查更新。
+
+Apple 芯片启动已验证；Intel 真机运行仍待验证。
+
+## 项目文档
+
+- 发布与签名、公证、自动更新：[docs/RELEASE.md](docs/RELEASE.md)
 - 方案：[docs/PLAN.md](docs/PLAN.md)
 - 设计稿：`design/LuciControl.dc.html`，渲染图在 `design/reference/`
 - 重新渲染设计稿：`python3 design/tools/render.py`（需要 node 和 Google Chrome）

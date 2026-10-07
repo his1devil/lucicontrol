@@ -32,14 +32,14 @@ struct SettingsView: View {
           VStack(alignment: .leading, spacing: 4) {
             SectionLabel(text: "更新")
             UpdateCard().padding(.top, 2)
-            ToggleRow(title: "自动检查更新", detail: "每天检查一次，并在启动时检查", isOn: model.autoCheckUpdates) { model.autoCheckUpdates.toggle() }
-            ToggleRow(title: "自动下载并安装", detail: "在后台下载，下次重启 LuciControl 时生效", isOn: model.autoInstallUpdates, enabled: model.autoCheckUpdates) { model.autoInstallUpdates.toggle() }
+            ToggleRow(title: "自动检查更新", detail: "每天检查一次，启动后安排检查", isOn: model.autoCheckUpdates) { model.setAutoCheckUpdates(!model.autoCheckUpdates) }
+            ToggleRow(title: "自动下载并安装", detail: "在后台下载，下次重启 LuciControl 时生效", isOn: model.autoInstallUpdates, enabled: model.autoCheckUpdates) { model.setAutoInstallUpdates(!model.autoInstallUpdates) }
           }
 
           VStack(alignment: .leading, spacing: 4) {
             SectionLabel(text: "通用")
             ToggleRow(title: "开机时启动 LuciControl", detail: "登录 macOS 后自动在菜单栏运行；不开着就没有共享", isOn: model.launchAtLogin) { model.setLaunchAtLogin(!model.launchAtLogin) }
-            ToggleRow(title: "更新可用时提示", detail: "在菜单栏图标和面板底部显示提示", isOn: model.updateHints) { model.updateHints.toggle() }
+            ToggleRow(title: "更新可用时提示", detail: "在菜单栏图标和面板底部显示提示", isOn: model.updateHints) { model.setUpdateHints(!model.updateHints) }
           }
 
           if let m = model.machine {
@@ -120,7 +120,7 @@ struct UpdateCard: View {
         Spacer(minLength: 8)
         PrimaryButton(title: button, compact: true, enabled: !busy, action: action)
       }
-      if case .downloading(_, let p) = model.update {
+      if case .downloading(_, let progress) = model.update, let p = progress {
         GeometryReader { g in
           ZStack(alignment: .leading) {
             Capsule().fill(DS.progressTrack)
@@ -150,6 +150,12 @@ struct UpdateCard: View {
 
   private func describe() -> (String, Color, String, () -> Void, Bool) {
     switch model.update {
+    case .unchecked:
+      return ("尚未检查更新", DS.ink3, "检查更新", { model.checkForUpdates() }, false)
+    case .failed(let message):
+      return (message, DS.waiting, "重试", { model.checkForUpdates() }, false)
+    case .deferred(let v):
+      return ("\(v) 待安装 · 等待服务就绪或会话结束", DS.waiting, "重试安装", { model.installUpdate() }, false)
     case .latest(let at):
       return ("已是最新版本 · \(Format.relative(at, now: model.now))检查", DS.running, "检查更新", { model.checkForUpdates() }, false)
     case .checking:
@@ -157,7 +163,7 @@ struct UpdateCard: View {
     case .available(let v, _):
       return ("发现新版本 \(v)", DS.accent, "下载并安装", { model.downloadUpdate() }, false)
     case .downloading(let v, let p):
-      return ("正在下载 \(v) · \(Int(p * 100))%", DS.ink3, "下载中…", {}, true)
+      return ("正在下载 \(v)" + (p.map { " · \(Int($0 * 100))%" } ?? ""), DS.ink3, "查看", { model.checkForUpdates() }, false)
     case .ready(let v, _):
       return ("\(v) 已下载，可以安装", DS.accent, "安装更新", { model.installUpdate() }, false)
     case .installing:

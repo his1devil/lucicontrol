@@ -29,7 +29,7 @@ final class PanelModel {
   var devices: [Device] = []
   var candidates: [DirectoryCandidate] = []
   var sharing: SharingState = .unpaired
-  var update: UpdateState = .latest(checkedAt: Date())
+  var update: UpdateState = .unchecked
   var machine: MachineInfo?
   var pairing: PairingState = .idle
   /// Sections whose folded idle sessions are shown.
@@ -38,9 +38,9 @@ final class PanelModel {
   var supportedAgents: Set<AgentKind> = [.codex]
 
   // Settings
-  var autoCheckUpdates = true
-  var autoInstallUpdates = true
-  var launchAtLogin = true
+  var autoCheckUpdates = false
+  var autoInstallUpdates = false
+  var launchAtLogin = false
   var updateHints = true
 
   // Add page
@@ -57,6 +57,7 @@ final class PanelModel {
 
   /// The daemon behind the panel; nil in `--demo`, where actions edit the sample data.
   @ObservationIgnored var backend: DaemonBackend?
+  @ObservationIgnored weak var updater: UpdateController?
 
   /// The last request that failed, shown in the footer for a moment.
   var lastError: String?
@@ -294,16 +295,38 @@ final class PanelModel {
     }
   }
 
+  var hasActiveSessions: Bool {
+    sessions.contains { $0.state == .running || $0.state == .waiting }
+  }
+
+  var updateRestartBlocked: Bool {
+    hasActiveSessions || sharing == .starting
+  }
+
+  func setAutoCheckUpdates(_ on: Bool) {
+    autoCheckUpdates = on
+    updater?.setAutomaticChecks(on)
+  }
+
+  func setAutoInstallUpdates(_ on: Bool) {
+    autoInstallUpdates = on
+    updater?.setAutomaticDownloads(on)
+  }
+
+  func setUpdateHints(_ on: Bool) {
+    updateHints = on
+    if !isDemo { UserDefaults.standard.set(on, forKey: "updateHints") }
+  }
+
   func checkForUpdates() {
-    update = .checking
+    updater?.checkForUpdates()
   }
 
   func downloadUpdate() {
-    guard let v = update.pendingVersion else { return }
-    update = .downloading(version: v, progress: 0.45)
+    updater?.checkForUpdates()
   }
 
   func installUpdate() {
-    update = .installing
+    updater?.installPendingUpdate()
   }
 }
