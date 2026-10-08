@@ -77,11 +77,17 @@ struct DirectorySection: View {
         SectionLabel(text: directory.name, color: DS.ink)
         Text("\(all.filter(\.shared).count)/\(all.count) 会话").font(.ui(10)).foregroundStyle(DS.ink3).lineLimit(1)
         Spacer()
+        RemoveButton(label: "移除共享目录 \(directory.name)", enabled: model.canRemove(directory),
+                     help: model.canRemove(directory) ? "移除共享目录，保留磁盘文件" : "有会话正在运行或等待响应，结束后可移除") {
+          model.requestDirectoryRemoval(directory)
+        }
+        .accessibilityIdentifier("remove-directory-\(directory.id)")
       }
       .padding(.bottom, 8)
       .contentShape(Rectangle())
       .contextMenu {
-        Button("停止共享此目录") { model.removeDirectory(directory) }
+        Button("移除共享目录…") { model.requestDirectoryRemoval(directory) }
+          .disabled(!model.canRemove(directory))
         Toggle("新会话自动共享", isOn: Binding(get: { directory.sharesNewSessions }, set: { model.setNewSessionsShared(directory, $0) }))
         Divider()
         Button("在 Finder 中显示") { NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: directory.path)]) }
@@ -115,7 +121,14 @@ struct SessionRow: View {
         Text(Format.sessionSubtitle(session, now: model.now)).font(.ui(10.5)).foregroundStyle(subtitleColor).lineLimit(1)
       }
       Spacer(minLength: 8)
-      PillToggle(isOn: on) { model.toggleSession(session.id) }
+      HStack(spacing: 6) {
+        PillToggle(isOn: on, enabled: !model.isRemoving) { model.toggleSession(session.id) }
+        RemoveButton(label: "移除会话 \(session.title)", enabled: model.canRemove(session),
+                     help: model.canRemove(session) ? "移除共享会话，保留 Codex 聊天记录" : "会话正在运行或等待响应，结束后可移除") {
+          model.requestSessionRemoval(session)
+        }
+        .accessibilityIdentifier("remove-session-\(session.id)")
+      }
     }
     .fixedSize(horizontal: false, vertical: true)
     .padding(.vertical, 9)

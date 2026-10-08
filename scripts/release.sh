@@ -4,8 +4,8 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
-VERSION="${RELEASE_VERSION:-0.1.1}"
-BUILD="${RELEASE_BUILD:-3}"
+VERSION="${RELEASE_VERSION:-0.1.2}"
+BUILD="${RELEASE_BUILD:-5}"
 IDENTITY="${SIGNING_IDENTITY:-Developer ID Application: Antai Feng (M7ZSWL69E9)}"
 TEAM="${DEVELOPER_TEAM:-M7ZSWL69E9}"
 PROFILE="${NOTARY_PROFILE:-lucicontrol-notary}"

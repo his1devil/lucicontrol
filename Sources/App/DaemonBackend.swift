@@ -94,9 +94,8 @@ final class DaemonBackend {
     alert.messageText = "开机时启动 LuciControl？"
     alert.informativeText = "LuciControl 开着，手机才连得上这台 Mac。登录 macOS 后自动在菜单栏运行，之后可以在设置里改。"
     alert.addButton(withTitle: "开启")
-    alert.addButton(withTitle: "不用")
-    NSApp.activate(ignoringOtherApps: true)
-    if alert.runModal() == .alertFirstButtonReturn {
+    alert.addButton(withTitle: "不用").keyEquivalent = "\u{1b}"
+    if model.runModalAlert(alert) == .alertFirstButtonReturn {
       model.setLaunchAtLogin(true)
     }
   }
@@ -214,6 +213,21 @@ final class DaemonBackend {
 
   func setSessionShared(_ id: String, _ shared: Bool) {
     call("threads.share", ["s": .string(id), "shared": .bool(shared)])
+  }
+
+  func removeSession(_ id: String) async throws {
+    try await remove("threads.remove", params: ["s": .string(id)])
+  }
+
+  func removeDirectory(_ path: String) async throws {
+    try await remove("shares.remove", params: ["path": .string(path)])
+  }
+
+  private func remove(_ method: String, params: [String: JSONValue]) async throws {
+    guard ready, let control else {
+      throw NSError(domain: "LuciControl", code: 1, userInfo: [NSLocalizedDescriptionKey: "后台尚未连接，请稍后重试"])
+    }
+    _ = try await control.call(method, params)
   }
 
   /// Sends the whole share list, built from the panel's directories and the options the

@@ -22,6 +22,7 @@ struct PanelRoot: View {
     }
     .frame(width: DS.panelWidth)
     .background(DS.panel)
+    .clipShape(RoundedRectangle(cornerRadius: DS.panelRadius, style: .circular))
     .task {
       // Relative times and the pairing countdown tick once a second, while the panel shows.
       while !Task.isCancelled {

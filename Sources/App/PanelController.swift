@@ -19,6 +19,7 @@ final class PanelController: NSObject, NSWindowDelegate {
     // Build the window now, so the first click does not pay for the first layout.
     let w = makeWindow()
     window = w
+    model.dialogParentWindow = w
     w.contentView?.layoutSubtreeIfNeeded()
   }
 
@@ -107,6 +108,10 @@ final class PanelController: NSObject, NSWindowDelegate {
     hosting.sizingOptions = []
     hosting.frame = container.bounds
     hosting.autoresizingMask = [.width, .height]
+    hosting.wantsLayer = true
+    hosting.layer?.backgroundColor = NSColor.clear.cgColor
+    hosting.layer?.cornerRadius = DS.panelRadius
+    hosting.layer?.cornerCurve = .circular
     hosting.layer?.masksToBounds = true
     container.addSubview(hosting)
     window.contentView = container
@@ -163,7 +168,7 @@ final class PanelController: NSObject, NSWindowDelegate {
       }
     }
     keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
-      if event.keyCode == 53 { // Esc
+      if event.keyCode == 53, self?.model.modalActive != true { // Esc belongs to an open dialog first.
         self?.hide()
         return nil
       }
@@ -203,7 +208,18 @@ final class PanelBackgroundView: NSVisualEffectView {
     state = .active
     wantsLayer = true
     layer?.cornerRadius = DS.panelRadius
-    layer?.cornerCurve = .continuous
+    layer?.cornerCurve = .circular
+    // The WindowServer's behind-window material needs its own mask; a CALayer
+    // corner radius alone leaves the blur/tint visible outside the rounded content.
+    let radius = DS.panelRadius
+    let mask = NSImage(size: NSSize(width: radius * 2 + 1, height: radius * 2 + 1), flipped: false) { rect in
+      NSColor.black.setFill()
+      NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius).fill()
+      return true
+    }
+    mask.capInsets = NSEdgeInsets(top: radius, left: radius, bottom: radius, right: radius)
+    mask.resizingMode = .stretch
+    maskImage = mask
     layer?.masksToBounds = true
     layer?.borderWidth = 0.5
     layer?.borderColor = NSColor(name: nil) { $0.isDark ? NSColor.white.withAlphaComponent(0.1) : NSColor.black.withAlphaComponent(0.12) }.cgColor

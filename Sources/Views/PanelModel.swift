@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import LuciControlCore
 import Observation
@@ -61,6 +62,7 @@ final class PanelModel {
 
   /// The last request that failed, shown in the footer for a moment.
   var lastError: String?
+  var isRemoving = false
 
   /// What is wrong with Codex on this Mac, when something is.
   var codexProblem: CodexProblem = .missing
@@ -73,6 +75,8 @@ final class PanelModel {
 
   /// True while a system dialog opened from the panel is up, so the panel stays open.
   var modalActive = false
+  /// The owning panel, even when clicking an alert makes it stop being the key window.
+  @ObservationIgnored weak var dialogParentWindow: NSWindow?
 
   /// The panel is on screen; the clock only ticks while it is.
   var panelVisible = false
@@ -164,9 +168,61 @@ final class PanelModel {
     backend?.saveDirectories()
   }
 
-  func removeDirectory(_ dir: SharedDirectory) {
-    directories.removeAll { $0.id == dir.id }
-    backend?.saveDirectories()
+  func canRemove(_ session: Session) -> Bool { !isRemoving && session.state == .idle }
+
+  func canRemove(_ directory: SharedDirectory) -> Bool {
+    !isRemoving && sessions(in: directory).allSatisfy { $0.state == .idle }
+  }
+
+  func requestSessionRemoval(_ session: Session) {
+    guard canRemove(session), confirmRemoval(title: "移除会话「\(session.title)」？",
+      detail: "将停止手机共享，并从 LuciControl 列表中移除。原始 Codex 会话和聊天记录会保留。") else { return }
+    Task { await removeSession(session) }
+  }
+
+  func requestDirectoryRemoval(_ directory: SharedDirectory) {
+    guard canRemove(directory), confirmRemoval(title: "移除共享目录「\(directory.name)」？",
+      detail: "将取消这个目录的共享，并从列表中移除。磁盘文件和原始 Codex 会话会保留；之后可以重新添加目录。") else { return }
+    Task { await removeDirectory(directory) }
+  }
+
+  private func confirmRemoval(title: String, detail: String) -> Bool {
+    let alert = NSAlert()
+    alert.messageText = title
+    alert.informativeText = detail
+    alert.alertStyle = .warning
+    alert.addButton(withTitle: "移除").hasDestructiveAction = true
+    alert.addButton(withTitle: "取消").keyEquivalent = "\u{1b}"
+    return runModalAlert(alert) == .alertFirstButtonReturn
+  }
+
+  func removeSession(_ session: Session) async {
+    guard canRemove(session) else { return }
+    isRemoving = true
+    defer { isRemoving = false }
+    do {
+      if let backend { try await backend.removeSession(session.id) }
+      else if !isDemo { throw backendUnavailable }
+      sessions.removeAll { $0.id == session.id }
+      lastError = nil
+    } catch { lastError = "移除失败：\((error as? RPCError)?.msg ?? error.localizedDescription)" }
+  }
+
+  func removeDirectory(_ dir: SharedDirectory) async {
+    guard canRemove(dir) else { return }
+    isRemoving = true
+    defer { isRemoving = false }
+    do {
+      if let backend { try await backend.removeDirectory(dir.path) }
+      else if !isDemo { throw backendUnavailable }
+      directories.removeAll { $0.id == dir.id }
+      expanded.remove(dir.id)
+      lastError = nil
+    } catch { lastError = "移除失败：\((error as? RPCError)?.msg ?? error.localizedDescription)" }
+  }
+
+  private var backendUnavailable: NSError {
+    NSError(domain: "LuciControl", code: 1, userInfo: [NSLocalizedDescriptionKey: "后台尚未连接，请稍后重试"])
   }
 
   func togglePause() {

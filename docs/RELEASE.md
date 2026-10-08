@@ -2,6 +2,10 @@
 
 更新时间：2026-10-07。当前公开分发版本 0.1.1 (3)，macOS 14+，Universal（arm64 / x86_64）。
 
+## 本机修复候选版 0.1.2 (5)
+
+2026-10-09 准备的本机候选进一步修复了确认框被主面板遮挡的问题，包含面板透明圆角修复，以及会话/共享目录的可见移除按钮。具体说明见 `docs/releases/0.1.2.html`，验证记录见 `docs/TESTING.md`。App 与 DMG 已通过 Developer ID 签名、Apple 公证、staple 和 Gatekeeper；7 个 Mach-O 均含两种架构，更新 ZIP 的 Ed25519 签名独立验证通过。产物与 `validation.json` 在 `build/releases/0.1.2-5/`，来源记录如实保留未提交工作树标记。本轮尚未发布到下载服务器、GitHub 或正式 appcast，也未替换正在运行的 `/Applications/LuciControl.app`；上述 0.1.1 仍为公开版本。
+
 ## 分发边界
 
 LuciControl.app 包含 lucirund，Sparkle 2.10.0 升级整个 App。手机配对、身份、共享目录保存在 `~/Library/Application Support/lucirund`，安装脚本和更新器不删除该目录。旧 CLI LaunchAgent 需要经过 App 的接管流程，不能同时运行两套 daemon。
@@ -31,7 +35,7 @@ LuciControl.app 包含 lucirund，Sparkle 2.10.0 升级整个 App。手机配对
 
 ## 准备候选包
 
-安装 Xcode、XcodeGen、Go，保留相邻 `../lucirund` 源码。从 [Sparkle 官方 2.10.0 发布](https://github.com/sparkle-project/Sparkle/releases/tag/2.10.0) 下载发布工具，指定 `bin` 路径。
+安装 Xcode、XcodeGen、Go 和 Python 3.10+（DMG 依赖要求），保留相邻 `../lucirund` 源码。从 [Sparkle 官方 2.10.0 发布](https://github.com/sparkle-project/Sparkle/releases/tag/2.10.0) 下载发布工具，指定 `bin` 路径。
 
 DMG 布局使用独立 Python 虚拟环境，依赖版本固定在 `scripts/dmg/requirements.txt`；AppKit、CoreServices、`tiffutil` 和 `hdiutil` 使用 macOS 自带工具链。先准备打包依赖：
 
@@ -52,7 +56,7 @@ xcodebuild -project LuciControl.xcodeproj -scheme LuciControl -configuration Deb
 SPARKLE_TOOLS=/path/to/Sparkle/bin scripts/release.sh
 ```
 
-正式发布默认要求 App 和 daemon 工作树干净。本地候选验证可显式设置 `ALLOW_DIRTY=1`，产物 `source.json` 会标记 dirty，不能将其描述为已经打 tag 的提交产物。每次构建使用唯一且递增的 `RELEASE_BUILD`，脚本拒绝覆盖已有输出目录。`RELEASE_VERSION`、`RELEASE_BUILD` 必须与准备发布的版本一致；默认值为 0.1.1 / 3。
+正式发布默认要求 App 和 daemon 工作树干净。本地候选验证可显式设置 `ALLOW_DIRTY=1`，产物 `source.json` 会标记 dirty，不能将其描述为已经打 tag 的提交产物。每次构建使用唯一且递增的 `RELEASE_BUILD`，脚本拒绝覆盖已有输出目录。`RELEASE_VERSION`、`RELEASE_BUILD` 必须与准备发布的版本一致；默认值为 0.1.2 / 5。
 
 脚本执行 Archive / Developer ID Export，检查包内每个 Mach-O 的两种架构、签名、Hardened Runtime 和时间戳，提交 Apple 公证，staple App 和 DMG，验证 Gatekeeper，生成携带更新包 Ed25519 签名的清单。构建过程保留公证结果 JSON、日志和来源记录。签名失败立即终止。
 

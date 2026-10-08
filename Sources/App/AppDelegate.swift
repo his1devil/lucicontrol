@@ -160,9 +160,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       alert.informativeText = model.quitWarning
       alert.alertStyle = .warning
       alert.addButton(withTitle: "退出")
-      alert.addButton(withTitle: "取消")
-      NSApp.activate(ignoringOtherApps: true)
-      guard alert.runModal() == .alertFirstButtonReturn else { return .terminateCancel }
+      alert.addButton(withTitle: "取消").keyEquivalent = "\u{1b}"
+      guard model.runModalAlert(alert) == .alertFirstButtonReturn else { return .terminateCancel }
     }
     guard let backend else { return .terminateNow }
     terminationPending = true
@@ -232,6 +231,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     NSApp.setActivationPolicy(.regular)
     NSApp.activate(ignoringOtherApps: true)
     window = w
+    model.dialogParentWindow = w
     if let i = CommandLine.arguments.firstIndex(of: "--snapshot"), i + 1 < CommandLine.arguments.count {
       let path = CommandLine.arguments[i + 1]
       DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {

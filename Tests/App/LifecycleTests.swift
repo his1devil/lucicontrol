@@ -76,3 +76,58 @@ final class LifecycleTests: XCTestCase {
     XCTAssertTrue(updater.isRestarting)
   }
 }
+
+
+@MainActor
+final class RemovalTests: XCTestCase {
+  func testDisconnectedRemovalPreservesRowsAndReportsFailure() async {
+    let model = PanelModel()
+    let dir = SharedDirectory(path: "/tmp/keep", agent: .codex, sharesNewSessions: false)
+    let session = Session(id: "keep", agent: .codex, directory: dir.path, title: "Keep", state: .idle, updatedAt: Date(), shared: true)
+    model.directories = [dir]
+    model.sessions = [session]
+    let backend = DaemonBackend(model: model, executable: URL(fileURLWithPath: "/usr/bin/false"), dataDir: "/tmp/lucicontrol-unused-test", relay: nil)
+    _ = backend
+    await model.removeSession(session)
+    XCTAssertEqual(model.sessions.count, 1)
+    XCTAssertNotNil(model.lastError)
+    await model.removeDirectory(dir)
+    XCTAssertEqual(model.directories.count, 1)
+    XCTAssertNotNil(model.lastError)
+    XCTAssertFalse(model.isRemoving)
+  }
+
+  func testActiveSessionsCannotBeHiddenByRemoval() async {
+    for state in [SessionState.running, .waiting] {
+      let model = PanelModel.demo()
+      let dir = SharedDirectory(path: "/tmp/work", agent: .codex, sharesNewSessions: false)
+      let session = Session(id: "active", agent: .codex, directory: dir.path, title: "Work", state: state, updatedAt: Date(), shared: false)
+      model.directories = [dir]
+      model.sessions = [session]
+      XCTAssertFalse(model.canRemove(session))
+      XCTAssertFalse(model.canRemove(dir))
+      await model.removeSession(session)
+      await model.removeDirectory(dir)
+      XCTAssertEqual(model.sessions.count, 1)
+      XCTAssertEqual(model.directories.count, 1)
+      XCTAssertTrue(model.hasActiveSessions)
+    }
+  }
+
+  func testOffKeepsSessionAndRemoveCleansUpDemoList() async {
+    let model = PanelModel.demo()
+    let dir = SharedDirectory(path: "/tmp/work", agent: .codex, sharesNewSessions: false)
+    let session = Session(id: "idle", agent: .codex, directory: dir.path, title: "Done", state: .idle, updatedAt: Date(), shared: true)
+    model.directories = [dir]
+    model.sessions = [session]
+    model.toggleSession(session.id)
+    XCTAssertEqual(model.sessions.count, 1)
+    XCTAssertFalse(model.sessions[0].shared)
+    await model.removeSession(model.sessions[0])
+    XCTAssertTrue(model.sessions.isEmpty)
+    model.expanded.insert(dir.id)
+    await model.removeDirectory(dir)
+    XCTAssertTrue(model.directories.isEmpty)
+    XCTAssertFalse(model.expanded.contains(dir.id))
+  }
+}

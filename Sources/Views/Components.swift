@@ -244,3 +244,28 @@ struct FittingScrollView<Content: View>: View {
     }
   }
 }
+
+/// Always visible beside sharing controls; the confirmation explains what is retained.
+struct RemoveButton: View {
+  var label: String
+  var enabled: Bool
+  var help: String
+  var action: () -> Void
+  @State private var hovered = false
+
+  var body: some View {
+    Button(action: action) {
+      Image(systemName: "trash").font(.system(size: 11))
+        .foregroundStyle(hovered && enabled ? Color.red : DS.ink3)
+        .frame(width: 24, height: 24)
+        .background(hovered && enabled ? DS.fill : .clear, in: RoundedRectangle(cornerRadius: 5))
+        .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .disabled(!enabled)
+    .opacity(enabled ? 1 : 0.4)
+    .onHover { hovered = $0 }
+    .help(help)
+    .accessibilityLabel(label)
+  }
+}
