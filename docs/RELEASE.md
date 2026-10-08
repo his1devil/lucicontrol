@@ -1,16 +1,16 @@
 # LuciControl 发布与更新
 
-更新时间：2026-10-07。当前公开分发版本 0.1.1 (3)，macOS 14+，Universal（arm64 / x86_64）。
+更新时间：2026-10-09。当前公开分发版本 0.1.2 (5)，macOS 14+，Universal（arm64 / x86_64）。
 
-## 本机修复候选版 0.1.2 (5)
+## 当前公开版本 0.1.2 (5)
 
-2026-10-09 准备的本机候选进一步修复了确认框被主面板遮挡的问题，包含面板透明圆角修复，以及会话/共享目录的可见移除按钮。具体说明见 `docs/releases/0.1.2.html`，验证记录见 `docs/TESTING.md`。App 与 DMG 已通过 Developer ID 签名、Apple 公证、staple 和 Gatekeeper；7 个 Mach-O 均含两种架构，更新 ZIP 的 Ed25519 签名独立验证通过。产物与 `validation.json` 在 `build/releases/0.1.2-5/`，来源记录如实保留未提交工作树标记。本轮尚未发布到下载服务器、GitHub 或正式 appcast，也未替换正在运行的 `/Applications/LuciControl.app`；上述 0.1.1 仍为公开版本。
+2026-10-09 发布的版本修复了确认框被主面板遮挡的问题，包含面板透明圆角修复，以及会话/共享目录的可见移除按钮。具体说明见 `docs/releases/0.1.2.html`，验证记录见 `docs/TESTING.md`。App 与 DMG 已通过 Developer ID 签名、Apple 公证、staple 和 Gatekeeper；7 个 Mach-O 均含两种架构，更新 ZIP 的 Ed25519 签名独立验证通过。产物与 `validation.json` 在 `build/releases/0.1.2-5/`，来源记录如实保留未提交工作树标记。下载站与 GitHub Release 均已公开，正式 appcast 已原子切换到 build 5 并保留 build 3。两个下载渠道的 DMG、ZIP 与校验文件均已匿名完整下载并核对哈希，线上 feed 的签名与 XML/缓存响应头验证通过；中继健康检查正常。发布记录见 `publication.json`。源码签名后归档：App `2a79f3566603b3b1d6384690e3053a8698d9551c` / 标签 `v0.1.2`，后台 `48749f58c7cc18b4e74325f6a13cb529d2a8e064`；原 `source.json` 保留工作树构建事实。本轮没有替换本机运行中的 App。
 
 ## 分发边界
 
 LuciControl.app 包含 lucirund，Sparkle 2.10.0 升级整个 App。手机配对、身份、共享目录保存在 `~/Library/Application Support/lucirund`，安装脚本和更新器不删除该目录。旧 CLI LaunchAgent 需要经过 App 的接管流程，不能同时运行两套 daemon。
 
-主更新源固定为 `https://im.zhanghuanyang.com/lucirund/dist/appcast.xml`。版本文件先部署到同一下载站，再原子替换 appcast。正式下载站已发布 0.1.1 (3)，公开 DMG 与 ZIP 完整下载后的 SHA256 与本机一致；线上 appcast 返回 200、`application/xml` 与 `no-cache, max-age=0, must-revalidate`，版本、大小和 Ed25519 签名核对通过。维护者已授权公开源码与版本标签；[GitHub Release v0.1.1](https://github.com/his1devil/lucicontrol/releases/tag/v0.1.1) 已发布，使用与主下载站完全相同的签名包，匿名完整下载后的 SHA256 核对通过。客户端没有自动切换镜像；国内、海外网络质量仍需分别实测。
+主更新源固定为 `https://im.zhanghuanyang.com/lucirund/dist/appcast.xml`。版本文件先部署到同一下载站，再原子替换 appcast。正式下载站已发布 0.1.2 (5)，公开 DMG 与 ZIP 完整下载后的 SHA256 与本机一致；线上 appcast 返回 200、`application/xml` 与 `no-cache, max-age=0, must-revalidate`，版本、大小和 Ed25519 签名核对通过。维护者已授权公开源码与版本标签；[GitHub Release v0.1.2](https://github.com/his1devil/lucicontrol/releases/tag/v0.1.2) 已发布，使用与主下载站完全相同的签名包，匿名完整下载后的 SHA256 核对通过。客户端没有自动切换镜像；国内、海外网络质量仍需分别实测。
 
 首次安装用 DMG，将 App 拖入 Applications。安装窗口参考 `yptd-desktop`：白底、600 × 380 点窗口、左右 120 点图标，紫色弧形箭头像笑脸并指向 Applications；顶部提供中英双语拖拽提示。Applications 是指向系统应用目录的真实快捷入口，背景包含 1x / 2x 分辨率。已经安装的 0.1.0 没有 Sparkle，需要先手动安装一次新版本，后续才能收到自动更新。手机继续使用 Luci Run 内部 TestFlight；这份 Mac 包不走 TestFlight。
 
@@ -72,7 +72,19 @@ SPARKLE_TOOLS=/path/to/Sparkle/bin scripts/release.sh
 
 脚本只准备本机产物，并向 Apple 提交公证；不上传服务器或 GitHub。
 
-## 公开下载（2026-10-07）
+## 公开下载（2026-10-09，0.1.2 / 5）
+
+- [安装包：LuciControl 0.1.2 (5) Universal DMG](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.1.2-5-universal.dmg)
+- [更新包 ZIP](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.1.2-5.zip)
+- [GitHub 备用下载与更新说明](https://github.com/his1devil/lucicontrol/releases/tag/v0.1.2)
+- [SHA256 校验文件](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.1.2-5.sha256)
+- [自动更新清单](https://im.zhanghuanyang.com/lucirund/dist/appcast.xml)
+
+DMG SHA256：`bacee1b46992d36f1c051c536354503fed91bf83c2f7bc2e5b21623375e46c42`。ZIP SHA256：`ec523d87c3274d8a34a3286c063b1a7605986c599e0ee15865dd3d6cc9c5d750`。
+
+先发布不可变版本文件并完成两个渠道的完整下载校验，再启用新 appcast。服务器旧清单备份在 `/root/app/remote/.release-lucicontrol-0.1.2-5/appcast-before.xml`。旧版本包与 CLI 的校验清单均未覆盖；后台源码保持原私有仓库权限。
+
+## 历史公开下载（2026-10-07，0.1.1 / 3）
 
 - [安装包：LuciControl 0.1.1 (3) Universal DMG](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.1.1-3-universal.dmg)
 - [更新包 ZIP](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.1.1-3.zip)
@@ -84,13 +96,13 @@ SPARKLE_TOOLS=/path/to/Sparkle/bin scripts/release.sh
 
 服务器先将 DMG/ZIP/版本化 `.sha256` 发布为不可变文件，再原子启用 appcast；现有 CLI 的 `SHA256SUMS` 与二进制未改动。nginx 为 appcast 增加精确路由，修正 XML 类型并要求重新验证缓存，仅做平滑重载；中继 PID 未变化，健康检查通过。配置备份：`/etc/nginx/conf.d/im.zhanghuanyang.com.conf.bak-lucicontrol-20261007-234517`。
 
-## 本轮验证结果
+## 历史版本 0.1.1 的验证结果
 
 正式候选包 0.1.1 (3) 的 App / DMG 均已通过公证、staple 和 Gatekeeper；7 个 Mach-O 都包含 arm64 与 x86_64。归档签名用 App 内公钥独立验证通过，修改字节后的签名验证失败。13 项 Core 测试、6 项 App 测试通过。Apple 芯片实际启动通过；本机 x86_64 启动返回 Bad CPU type，因此 Intel 运行仍未验收。
 
 本次只修订首次安装 DMG 外壳，保留 0.1.1 (3) 的 App 与 Sparkle ZIP。已实际通过 Finder 打开验证双语提示、图标、笑脸箭头和 Applications 入口；包内 App 签名与公证票据仍有效，App/daemon 可执行文件和 CodeResources 与原候选包一致。新 DMG 重新通过 Developer ID 签名、Apple 公证、staple 与 Gatekeeper。旧的纯白安装镜像及校验记录保存在候选目录的 `previous-installer/plain/`，不用于分发。
 
-当前 DMG SHA256：`8a3487a5ceb1fd5f5d7c554d844ddc845137127fecb2bad412198f53206fd8c1`。ZIP SHA256 仍为 `4ef7cda20684f20cca53f1a485036e4f5d4b9f8f4976b6a07ad676fdf204f1b0`。
+0.1.1 DMG SHA256：`8a3487a5ceb1fd5f5d7c554d844ddc845137127fecb2bad412198f53206fd8c1`。ZIP SHA256 仍为 `4ef7cda20684f20cca53f1a485036e4f5d4b9f8f4976b6a07ad676fdf204f1b0`。
 
 另用独立 bundle ID `com.his1devil.lucicontrol.updatevalidation` 制作了两个 Developer ID 签名并公证的测试副本，复用正式 App 的可执行代码和 Sparkle，仅替换测试 Info.plist、模拟 daemon 与本机更新地址。实际通过 Sparkle UI 验证：
 
