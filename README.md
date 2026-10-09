@@ -5,7 +5,7 @@ lucirund 的 macOS 菜单栏 App：决定哪些目录和 Codex 会话对手机�
 
 ## 下载与安装
 
-[下载 LuciControl 0.1.2 (5)](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.1.2-5-universal.dmg) · [GitHub 备用下载与更新说明](https://github.com/his1devil/lucicontrol/releases/tag/v0.1.2) · [文件校验值](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.1.2-5.sha256)
+[下载 LuciControl 0.3.0 (6)](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.3.0-6-universal.dmg) · [GitHub 备用下载与更新说明](https://github.com/his1devil/lucicontrol/releases/tag/v0.3.0) · [文件校验值](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.3.0-6.sha256)
 
 macOS 14+，Universal（Apple 芯片 / Intel）。打开 DMG，沿笑脸箭头将 LuciControl 拖入 Applications。
 首次启动按提示准备并登录 Codex，再用手机上的 Luci Run 配对。旧版 0.1.0 需要手动安装本版一次，之后可在设置里检查更新。
