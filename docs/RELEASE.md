@@ -1,8 +1,14 @@
 # LuciControl 发布与更新
 
-更新时间：2026-10-10。当前公开分发版本 0.3.0 (6)，macOS 14+，Universal（arm64 / x86_64）。
+更新时间：2026-10-10。当前公开分发版本 0.3.1 (7)，macOS 14+，Universal（arm64 / x86_64）。
 
-## 当前公开版本 0.3.0 (6)
+## 当前公开版本 0.3.1 (7)
+
+2026-10-10 发布。确认框（移除会话、移除共享目录、退出、开机启动）重新显示在屏幕正中：0.1.2 起它先挂到面板上再弹出，出现在未摆放的初始位置，偏左约 400pt。说明见 `docs/releases/0.3.1.html`。内置后台代码与 0.3.0 相同，默认版本号改为 0.3.1。
+
+从干净的已提交源码构建：App `c318f449a87293369a02cf8c878d1d6fbd475fca`（标签 `v0.3.1`），后台 `b55b291e7920c03757f3126742ce7b10b9acbb85`，包内 daemon 自报 `lucirund 0.3.1+b55b291`。App 与 DMG 通过 Developer ID 签名、Apple 公证（App `f26a948b-b5ab-46b3-9f49-e31cf4e582d0`，DMG `cd2f4e5c-3430-4e05-b111-1dcbe27ec408`）、staple 与 Gatekeeper；更新 ZIP 的 Ed25519 签名用 App 内置公钥验证通过，改动一个字节即失败；Release 版在隔离目录实际运行过。两个下载渠道的文件匿名完整下载后逐字节一致；正式 appcast 已原子切换到 build 7，保留 6、5、3（备份 `/root/app/remote/.release-lucicontrol-0.3.1-7/appcast-before.xml`）；中继健康，CLI 的 `SHA256SUMS` 未改动。产物与 `publication.json` 在 `build/releases/0.3.1-7/`。本轮没有替换本机运行中的 App。
+
+## 历史版本 0.3.0 (6)
 
 2026-10-10 发布。修复部分 Mac 上 CPU 占用过高、启动后无响应（codex 一启动就退出时后台每秒重启数百次），修复添加共享目录会让其他目录的私有会话对手机可见的问题，手机在线状态、设备移除、错误提示与诊断更可靠；App 与内置 lucirund 版本统一为 0.3.0。说明见 `docs/releases/0.3.0.html`，验证记录见 `docs/TESTING.md`。
 
@@ -18,7 +24,7 @@
 
 LuciControl.app 包含 lucirund，Sparkle 2.10.0 升级整个 App。手机配对、身份、共享目录保存在 `~/Library/Application Support/lucirund`，安装脚本和更新器不删除该目录。旧 CLI LaunchAgent 需要经过 App 的接管流程，不能同时运行两套 daemon。
 
-主更新源固定为 `https://im.zhanghuanyang.com/lucirund/dist/appcast.xml`。版本文件先部署到同一下载站，再原子替换 appcast。正式下载站已发布 0.3.0 (6)，公开 DMG 与 ZIP 完整下载后的 SHA256 与本机一致；线上 appcast 返回 200、`application/xml` 与 `no-cache, max-age=0, must-revalidate`，版本、大小和 Ed25519 签名核对通过。维护者已授权公开源码与版本标签；[GitHub Release v0.3.0](https://github.com/his1devil/lucicontrol/releases/tag/v0.3.0) 已发布，使用与主下载站完全相同的签名包，匿名完整下载后的 SHA256 核对通过。客户端没有自动切换镜像；国内、海外网络质量仍需分别实测。
+主更新源固定为 `https://im.zhanghuanyang.com/lucirund/dist/appcast.xml`。版本文件先部署到同一下载站，再原子替换 appcast。正式下载站已发布 0.3.1 (7)，公开 DMG 与 ZIP 完整下载后的 SHA256 与本机一致；线上 appcast 返回 200、`application/xml` 与 `no-cache, max-age=0, must-revalidate`，版本、大小和 Ed25519 签名核对通过。维护者已授权公开源码与版本标签；[GitHub Release v0.3.1](https://github.com/his1devil/lucicontrol/releases/tag/v0.3.1) 已发布，使用与主下载站完全相同的签名包，匿名完整下载后的 SHA256 核对通过。客户端没有自动切换镜像；国内、海外网络质量仍需分别实测。
 
 首次安装用 DMG，将 App 拖入 Applications。安装窗口参考 `yptd-desktop`：白底、600 × 380 点窗口、左右 120 点图标，紫色弧形箭头像笑脸并指向 Applications；顶部提供中英双语拖拽提示。Applications 是指向系统应用目录的真实快捷入口，背景包含 1x / 2x 分辨率。已经安装的 0.1.0 没有 Sparkle，需要先手动安装一次新版本，后续才能收到自动更新。手机继续使用 Luci Run 内部 TestFlight；这份 Mac 包不走 TestFlight。
 
@@ -80,7 +86,19 @@ SPARKLE_TOOLS=/path/to/Sparkle/bin scripts/release.sh
 
 脚本只准备本机产物，并向 Apple 提交公证；不上传服务器或 GitHub。
 
-## 公开下载（2026-10-10，0.3.0 / 6）
+## 公开下载（2026-10-10，0.3.1 / 7）
+
+- [安装包：LuciControl 0.3.1 (7) Universal DMG](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.3.1-7-universal.dmg)
+- [更新包 ZIP](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.3.1-7.zip)
+- [GitHub 备用下载与更新说明](https://github.com/his1devil/lucicontrol/releases/tag/v0.3.1)
+- [SHA256 校验文件](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.3.1-7.sha256)
+- [自动更新清单](https://im.zhanghuanyang.com/lucirund/dist/appcast.xml)
+
+DMG SHA256：`d19f3b9ef1726cb91bae17716b5284cb650936dfef95102344767ff42e0357e7`。ZIP SHA256：`ca463a3cc35260268d770b879eb08c748a51a7682803fda82985f06c71e4010f`。
+
+切换前线上清单是 0.3.0 发布时的那份（`57db0131…`），新清单 `9afed336…`。旧版本包与 CLI 的校验清单均未覆盖。
+
+## 历史公开下载（2026-10-10，0.3.0 / 6）
 
 - [安装包：LuciControl 0.3.0 (6) Universal DMG](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.3.0-6-universal.dmg)
 - [更新包 ZIP](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.3.0-6.zip)
