@@ -28,7 +28,15 @@ extension PanelModel {
       if parent.level.rawValue >= NSWindow.Level.modalPanel.rawValue {
         parent.level = NSWindow.Level(rawValue: NSWindow.Level.modalPanel.rawValue - 1)
       }
-      if let dialog { parent.addChildWindow(dialog, ordered: .above) }
+      if let dialog {
+        // Where a lone alert goes: centred, a little above the middle. Attaching orders the
+        // window in at its unplaced origin, far to the left, and runModal does not move a
+        // window that is already on screen. center() uses the screen the window is on, so
+        // it goes onto the panel's screen first.
+        if let area = parent.screen?.visibleFrame { dialog.setFrameOrigin(NSPoint(x: area.midX, y: area.midY)) }
+        dialog.center()
+        parent.addChildWindow(dialog, ordered: .above)
+      }
     }
     defer {
       if let dialog {

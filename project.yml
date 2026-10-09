@@ -11,8 +11,8 @@ settings:
     # The one place the version lives: the app, its bundled lucirund (scripts/build-daemon.sh)
     # and scripts/release.sh read it here. The build number stays a plain integer that only
     # goes up: Sparkle compares it to decide what is newer (0.1.2 was build 5).
-    MARKETING_VERSION: 0.3.0
-    CURRENT_PROJECT_VERSION: 6
+    MARKETING_VERSION: 0.3.1
+    CURRENT_PROJECT_VERSION: 7
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: M7ZSWL69E9
     ARCHS: 'arm64 x86_64'

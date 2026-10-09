@@ -41,7 +41,7 @@ public enum DemoData {
   }
 
   public static func machine() -> MachineInfo {
-    MachineInfo(label: "fatMac", owner: "xiaolu", appVersion: "0.3.0", daemonVersion: "0.3.0", agentVersion: "codex 0.159.0",
+    MachineInfo(label: "fatMac", owner: "xiaolu", appVersion: "0.3.1", daemonVersion: "0.3.1", agentVersion: "codex 0.159.0",
                 tokenExpiresAt: Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 28)), tokenRenews: true)
   }
 

@@ -29,6 +29,10 @@ final class PanelDialogTests: XCTestCase {
           XCTAssertTrue(alert.window.parent === panel)
           XCTAssertTrue(panel.isVisible)
           XCTAssertGreaterThan(alert.window.level.rawValue, panel.level.rawValue)
+          // Where a lone alert goes, not the unplaced origin off to the left.
+          if let area = panel.screen?.visibleFrame {
+            XCTAssertEqual(alert.window.frame.midX, area.midX, accuracy: 1, "the alert must be centred on the panel's screen")
+          }
           // NSApp.orderedWindows excludes non-main NSPanel windows; compare the actual
           // WindowServer order, which includes both the menu panel and the alert.
           let windows = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
