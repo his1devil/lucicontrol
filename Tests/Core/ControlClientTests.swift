@@ -93,6 +93,53 @@ final class ControlClientTests: XCTestCase, @unchecked Sendable {
     }
   }
 
+  func testRawNELInAStringDoesNotSplitTheMessage() async throws {
+    let channel = ControlTestChannel()
+    defer { channel.close() }
+    try await channel.client.start(app: "test")
+    // Bytes as Go's encoding/json writes them: U+0085 stays raw inside the string.
+    channel.onRequest { id in
+      var line = Data(#"{"op":"reply","id":\#(id),"result":"a"#.utf8)
+      line += Data([0xc2, 0x85])
+      line += Data(#"b"}"#.utf8) + Data([0x0a])
+      try? channel.send(line)
+    }
+    let value = try await channel.client.call("status", timeout: 2)
+    XCTAssertEqual(value, .string("a\u{85}b"))
+    await channel.client.stop()
+  }
+
+  func testMessageSplitAcrossWritesIsReassembled() async throws {
+    let channel = ControlTestChannel()
+    defer { channel.close() }
+    try await channel.client.start(app: "test")
+    channel.onRequest { id in
+      let line = Data(#"{"op":"reply","id":\#(id),"result":true}"#.utf8) + Data([0x0a])
+      try? channel.send(line.prefix(9))
+      Thread.sleep(forTimeInterval: 0.05)
+      try? channel.send(line.dropFirst(9))
+    }
+    let value = try await channel.client.call("status", timeout: 2)
+    XCTAssertEqual(value, .bool(true))
+    await channel.client.stop()
+  }
+
+  func testUnansweredCallTimesOutAndTheChannelStaysUsable() async throws {
+    let channel = ControlTestChannel()
+    defer { channel.close() }
+    try await channel.client.start(app: "test")
+    do {
+      _ = try await channel.client.call("status", timeout: 0.05)
+      XCTFail("An unanswered call must time out")
+    } catch {
+      XCTAssertEqual(error as? ControlError, .timeout)
+    }
+    channel.onRequest { id in try? channel.reply(id: id) }
+    let value = try await channel.client.call("status", timeout: 2)
+    XCTAssertEqual(value, .bool(true))
+    await channel.client.stop()
+  }
+
   func testAlreadyCancelledRequestIsNotWritten() async {
     let written = expectation(description: "no request should be written")
     written.isInverted = true
@@ -139,7 +186,12 @@ private final class ControlTestChannel: @unchecked Sendable {
   }
 
   func reply(id: Int) throws {
-    try incoming.fileHandleForWriting.write(contentsOf: Data("{\"op\":\"reply\",\"id\":\(id),\"result\":true}\n".utf8))
+    try send(Data("{\"op\":\"reply\",\"id\":\(id),\"result\":true}\n".utf8))
+  }
+
+  /// Raw bytes from the daemon's side, as they would come down its stdout.
+  func send(_ bytes: some DataProtocol) throws {
+    try incoming.fileHandleForWriting.write(contentsOf: bytes)
   }
 
   func close() {

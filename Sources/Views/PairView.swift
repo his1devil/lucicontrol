@@ -31,7 +31,8 @@ struct PairView: View {
             instructions("在 iPhone 上打开 Luci Run，进入 Agent →「我的设备」\n→「连接一台电脑」，输入上面的 6 位短码")
           }
           HStack(spacing: 6) {
-            PulsingDot(color: DS.accent)
+            // No endless animation while the panel is hidden; it starts again on show.
+            if model.panelVisible { PulsingDot(color: DS.accent) } else { Circle().fill(DS.accent).frame(width: 6, height: 6) }
             Text("等待连接 · \(Format.countdown(until: expiresAt, now: model.now)) 后过期 · ").font(.ui(10.5)).foregroundStyle(DS.ink2)
               + Text("刷新").font(.ui(10.5)).foregroundStyle(DS.accentText)
           }
@@ -48,7 +49,8 @@ struct PairView: View {
             .frame(width: 44, height: 44).background(DS.accentFill, in: Circle())
           VStack(spacing: 4) {
             Text("\(user) 的手机要连接这台 Mac").font(.ui(12)).foregroundStyle(DS.ink)
-            Text("\(device) · 之后它能看到并操作共享目录里的会话。是你吗？").font(.ui(10.5)).foregroundStyle(DS.ink2)
+            // The relay does not say which phone claimed the code (deviceLabel is empty).
+            Text((device.isEmpty ? "" : "\(device) · ") + "之后它能看到并操作共享目录里的会话。是你吗？").font(.ui(10.5)).foregroundStyle(DS.ink2)
               .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
           }
           HStack(spacing: 8) {
@@ -64,7 +66,7 @@ struct PairView: View {
           Image(systemName: "checkmark").font(.system(size: 18, weight: .semibold)).foregroundStyle(DS.accentText)
             .frame(width: 44, height: 44).background(DS.accentFill, in: Circle())
           VStack(spacing: 4) {
-            Text("已连接 \(user) 的 \(device)").font(.ui(12)).foregroundStyle(DS.ink)
+            Text("已连接 \(Format.pairedDevice(user: user, label: device))").font(.ui(12)).foregroundStyle(DS.ink)
             Text("经中继转发 · 端到端加密").font(.ui(10.5)).foregroundStyle(DS.ink2)
           }
           PrimaryButton(title: "完成") { model.finishPairing() }.frame(width: 96).padding(.top, 4)
@@ -95,22 +97,34 @@ struct PairView: View {
 struct QRCodeView: View {
   var payload: String
   var body: some View {
-    if let image = Self.render(payload) {
+    if let image = Self.image(for: payload) {
       Image(nsImage: image).resizable().interpolation(.none).scaledToFit()
     } else {
       Color.gray
     }
   }
 
+  /// The last code drawn. The countdown re-renders the page every second; the payload only
+  /// changes when a new code is out.
+  @MainActor private static var cached: (payload: String, image: NSImage)?
+
+  @MainActor static func image(for payload: String) -> NSImage? {
+    if let cached, cached.payload == payload { return cached.image }
+    guard let image = render(payload) else { return nil }
+    cached = (payload, image)
+    return image
+  }
+
+  /// A bitmap, rendered once. Modules are scaled up 10× with nearest sampling first: a
+  /// one-pixel-per-module bitmap gets smoothed into a blur when drawn at 150 pt, whatever
+  /// the view's interpolation says.
   static func render(_ text: String) -> NSImage? {
     let filter = CIFilter.qrCodeGenerator()
     filter.message = Data(text.utf8)
     filter.correctionLevel = "M"
-    guard let ci = filter.outputImage else { return nil }
-    let scaled = ci.transformed(by: CGAffineTransform(scaleX: 8, y: 8))
-    let rep = NSCIImageRep(ciImage: scaled)
-    let image = NSImage(size: rep.size)
-    image.addRepresentation(rep)
-    return image
+    guard let code = filter.outputImage else { return nil }
+    let ci = code.samplingNearest().transformed(by: CGAffineTransform(scaleX: 10, y: 10))
+    guard let cg = CIContext().createCGImage(ci, from: ci.extent) else { return nil }
+    return NSImage(cgImage: cg, size: NSSize(width: cg.width, height: cg.height))
   }
 }

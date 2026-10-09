@@ -5,6 +5,9 @@ import Foundation
 public actor ControlClient {
   public typealias Handler = @Sendable (DaemonMessage) -> Void
 
+  /// A line longer than this is dropped whole rather than held in memory.
+  static let maxLine = 32 << 20
+
   private let input: FileHandle
   private let output: FileHandle
   private var nextID = 1
@@ -12,6 +15,7 @@ public actor ControlClient {
   private let onPush: Handler
   private var reader: Task<Void, Never>?
   private var closed = false
+  private let decoder = JSONDecoder()
 
   public init(reading input: FileHandle, writing output: FileHandle, onPush: @escaping Handler) {
     self.input = input
@@ -24,15 +28,19 @@ public actor ControlClient {
     reader = Task { [weak self] in
       guard let self else { return }
       do {
-        for try await line in self.input.bytes.lines {
-          guard let data = line.data(using: .utf8), !line.isEmpty else { continue }
-          do {
-            let msg = try JSONDecoder().decode(DaemonMessage.self, from: data)
-            await self.dispatch(msg)
-          } catch {
-            // A line we do not understand is not fatal; the daemon may be newer than us.
+        // One message per line, split on the newline byte only. `bytes.lines` also ends a
+        // line at U+0085 and U+2028/2029, which may sit raw inside a JSON string: the
+        // message came apart and both halves were dropped.
+        var line: [UInt8] = []
+        var overflow = false
+        for try await byte in self.input.bytes {
+          guard byte == 0x0a else {
+            if line.count < Self.maxLine { line.append(byte) } else { overflow = true }
             continue
           }
+          if !line.isEmpty, !overflow { await self.receive(Data(line)) }
+          line.removeAll(keepingCapacity: true)
+          overflow = false
         }
       } catch {}
       await self.closeAll(with: ControlError.closed)
@@ -46,8 +54,16 @@ public actor ControlClient {
     closeAll(with: ControlError.closed)
   }
 
-  /// One request; the reply's `result`, or the daemon's error.
-  public func call(_ method: String, _ params: [String: JSONValue] = [:]) async throws -> JSONValue {
+  /// One request; the reply's `result`, or the daemon's error. A reply that never comes (a
+  /// daemon that hung, a line that got lost) ends in `ControlError.timeout` rather than a
+  /// caller waiting forever.
+  public func call(_ method: String, _ params: [String: JSONValue] = [:], timeout: Double = 15) async throws -> JSONValue {
+    try await withTimeout(seconds: timeout, throwing: ControlError.timeout) {
+      try await self.request(method, params)
+    }
+  }
+
+  private func request(_ method: String, _ params: [String: JSONValue]) async throws -> JSONValue {
     if closed { throw ControlError.closed }
     let id = nextID
     nextID += 1
@@ -72,6 +88,12 @@ public actor ControlClient {
 
   private func cancelRequest(_ id: Int) {
     pending.removeValue(forKey: id)?.resume(throwing: CancellationError())
+  }
+
+  private func receive(_ line: Data) {
+    // A line we do not understand is not fatal; the daemon may be newer than us.
+    guard let msg = try? decoder.decode(DaemonMessage.self, from: line) else { return }
+    dispatch(msg)
   }
 
   private func dispatch(_ msg: DaemonMessage) {
@@ -102,6 +124,8 @@ public actor ControlClient {
 
 public enum ControlError: Error, Equatable {
   case closed
+  /// No reply within the request's deadline.
+  case timeout
 }
 
 extension DaemonMessage {

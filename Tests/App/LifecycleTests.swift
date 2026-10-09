@@ -40,10 +40,11 @@ final class LifecycleTests: XCTestCase {
     for state in [SessionState.running, .waiting] {
       let model = PanelModel()
       let updater = UpdateController(model: model, start: false)
+      updater.confirmInstallAnyway = { false } // the person keeps the turn running
       model.sessions = [Session(id: "active", agent: .codex, directory: "/tmp", title: "Work", state: state, updatedAt: Date(), shared: false)]
       var installs = 0
-      XCTAssertTrue(updater.postponeRestart(version: "0.1.2", installHandler: { installs += 1 }))
-      XCTAssertEqual(model.update, .deferred(version: "0.1.2"))
+      XCTAssertTrue(updater.postponeRestart(version: "0.3.1", installHandler: { installs += 1 }))
+      XCTAssertEqual(model.update, .deferred(version: "0.3.1"))
       updater.installPendingUpdate()
       XCTAssertEqual(installs, 0)
       XCTAssertFalse(updater.isRestarting)
@@ -59,9 +60,10 @@ final class LifecycleTests: XCTestCase {
   func testStartupWaitsForDaemonBeforeUpdateRestart() {
     let model = PanelModel()
     let updater = UpdateController(model: model, start: false)
+    updater.confirmInstallAnyway = { false }
     model.sharing = .starting
     var installs = 0
-    XCTAssertTrue(updater.postponeRestart(version: "0.1.2", installHandler: { installs += 1 }))
+    XCTAssertTrue(updater.postponeRestart(version: "0.3.1", installHandler: { installs += 1 }))
     updater.installPendingUpdate()
     XCTAssertEqual(installs, 0)
     model.sharing = .unpaired
@@ -69,10 +71,27 @@ final class LifecycleTests: XCTestCase {
     XCTAssertEqual(installs, 1)
   }
 
+  /// A daemon that never comes up must not keep the update that fixes it from installing:
+  /// the person can install anyway, and quitting then does not ask a second time.
+  func testInstallAnywayWhileBlocked() {
+    let model = PanelModel()
+    let updater = UpdateController(model: model, start: false)
+    model.sharing = .starting
+    var asked = 0
+    updater.confirmInstallAnyway = { asked += 1; return true }
+    var installs = 0
+    XCTAssertTrue(updater.postponeRestart(version: "0.3.1", installHandler: { installs += 1 }))
+    updater.installPendingUpdate()
+    XCTAssertEqual(asked, 1)
+    XCTAssertEqual(installs, 1)
+    XCTAssertTrue(updater.isRestarting)
+    XCTAssertTrue(updater.restartConfirmed)
+  }
+
   func testIdleUpdateUsesNormalTerminationPath() {
     let model = PanelModel()
     let updater = UpdateController(model: model, start: false)
-    XCTAssertFalse(updater.postponeRestart(version: "0.1.2", installHandler: { XCTFail("Sparkle retains this handler when not postponed") }))
+    XCTAssertFalse(updater.postponeRestart(version: "0.3.1", installHandler: { XCTFail("Sparkle retains this handler when not postponed") }))
     XCTAssertTrue(updater.isRestarting)
   }
 }

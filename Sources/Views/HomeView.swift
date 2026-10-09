@@ -74,7 +74,8 @@ struct DirectorySection: View {
     let expanded = model.expanded.contains(directory.id)
     VStack(alignment: .leading, spacing: 0) {
       HStack(spacing: 8) {
-        SectionLabel(text: directory.name, color: DS.ink)
+        // Two folders can share a name; the full path tells them apart.
+        SectionLabel(text: directory.name, color: DS.ink).help(Format.shortPath(directory.path))
         Text("\(all.filter(\.shared).count)/\(all.count) 会话").font(.ui(10)).foregroundStyle(DS.ink3).lineLimit(1)
         Spacer()
         RemoveButton(label: "移除共享目录 \(directory.name)", enabled: model.canRemove(directory),

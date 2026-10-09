@@ -23,7 +23,7 @@ public enum Mapping {
 
   public static func device(_ d: WireDevice, removed: Set<String>) -> Device {
     Device(id: d.id, label: d.label?.isEmpty == false ? d.label! : (d.user.isEmpty ? d.id : d.user + " 的手机"), user: d.user,
-           isOwner: d.owner, online: d.online, watching: d.watching, blocked: d.blocked, removed: removed.contains(d.id))
+           isOwner: d.owner, online: d.online, verified: d.verified, watching: d.watching, blocked: d.blocked, removed: removed.contains(d.id))
   }
 
   public static func candidate(_ c: WireCandidate) -> DirectoryCandidate {
@@ -38,7 +38,10 @@ public enum Mapping {
 
   public static func machine(state: WireState, machine: WireMachine?, appVersion: String) -> MachineInfo {
     MachineInfo(label: machine?.label ?? "", owner: state.owner ?? "", appVersion: appVersion, daemonVersion: state.daemon.version,
-                agentVersion: state.agent.version ?? machine?.agentVersion ?? "", tokenExpiresAt: state.tokenExpiresAt.map { Date(timeIntervalSince1970: Double($0)) })
+                agentVersion: state.agent.version ?? machine?.agentVersion ?? "", tokenExpiresAt: state.tokenExpiresAt.map { Date(timeIntervalSince1970: Double($0)) },
+                // The link's error is only news while the link is down.
+                linkError: state.link.online ? "" : state.link.error ?? "", agentError: state.agent.error ?? "",
+                tokenRenews: state.tokenRenews, tokenRenewError: state.tokenRenewError ?? "")
   }
 
   public static func pairing(_ p: WirePair) -> PairingState {
@@ -58,14 +61,23 @@ public enum Mapping {
     }
   }
 
-  /// The share list to send back after a change on the panel.
-  public static func shares(_ dirs: [SharedDirectory], existing: [WireShare]) -> [WireShare] {
-    dirs.map { d in
+  /// The share list to send back after a change on the panel: each share as the daemon
+  /// described it (date and options included), with the panel's switch.
+  public static func shares(_ dirs: [SharedDirectory], existing: [WireShare], now: Date = Date()) -> [WireShare] {
+    let stamp = Int64(now.timeIntervalSince1970 * 1000)
+    return dirs.map { d in
       if var e = existing.first(where: { $0.path == d.path }) {
+        // A share without a date (added from a phone, or taken over from the command line)
+        // shares every thread, whatever its switch says. Switching it gives it a date: what
+        // is there stays shared, sessions from now on follow the switch.
+        if e.addedAt == nil, (e.new ?? true) != d.sharesNewSessions {
+          e.addedAt = stamp
+          e.existing = true
+        }
         e.new = d.sharesNewSessions
         return e
       }
-      return WireShare(path: d.path, addedAt: Int64(Date().timeIntervalSince1970 * 1000), existing: true, new: d.sharesNewSessions)
+      return WireShare(path: d.path, addedAt: stamp, existing: true, new: d.sharesNewSessions)
     }
   }
 }

@@ -390,6 +390,15 @@ lucicontrol/
 | 7 | 退出确认 | **只在有手机连着、或有手机发起的回合在跑时才弹** |
 | 8 | macOS 14、Bundle ID、更新包位置、文案里叫 Luci Run | **不改** |
 
+## 10. 实现与方案的出入（2026-10-09，0.3.0）
+
+| 方案 | 实际 | 说明 |
+|---|---|---|
+| 第 9 节第 7 条：只在有手机连着或有回合在跑时才问退出 | 手动退出总是问；注销、重启、关机不问 | 退出就是关掉共享，总问一次更不容易误关；系统发起的退出没人回答，问了会拦住注销 |
+| 第 5.1 节、第 6 节：KeepAlive 启动代理，崩溃后由系统重启 | 普通登录项（`SMAppService.mainApp`），崩溃后不会自动重启 | 登记 RunAtLoad 的启动代理会再起一个副本；要用得先把运行中的 App 交给 launchd，会中断一下共享。见 `LoginItem.swift` |
+| 第 4.3 节：直接用手机端的 RemoteWire 模型 | `ControlMessages.swift` 自己声明控制通道的结构 | 两边靠协议对照测试保持一致：lucirund 导出真实消息（`TestExportControlFixtures`），`ContractTests` 解码核对 |
+| 版本 | App 与包内 lucirund 同为 0.3.0，只在 `project.yml` 写一处 | 见 RELEASE.md |
+
 ## 附录：设计稿里的数值
 
 | 项 | 浅色 | 深色 |

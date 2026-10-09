@@ -38,6 +38,59 @@ final class FormattingTests: XCTestCase {
     XCTAssertEqual(Format.sessionSubtitle(s, now: now), "桌面版正在使用 · 空闲")
   }
 
+  func testDeviceSubtitleFollowsTheMacsOwnLink() {
+    var d = Device(id: "p1", label: "iPhone", user: "kai", isOwner: true, online: true, verified: true, watching: 2)
+    XCTAssertEqual(Format.deviceSubtitle(d, macOnline: true), "在线 · 正在看 2 个会话")
+    // Paused, connecting or restarting: the last roster says nothing about now.
+    XCTAssertEqual(Format.deviceSubtitle(d, macOnline: false), "状态未知")
+    d.verified = false
+    XCTAssertEqual(Format.deviceSubtitle(d, macOnline: true), "在线 · 未连接这台 Mac")
+    d.online = false
+    XCTAssertEqual(Format.deviceSubtitle(d, macOnline: true), "离线")
+    d = Device(id: "p2", label: "Pixel", user: "lin", isOwner: false, online: true, verified: false, watching: 1, blocked: true)
+    XCTAssertEqual(Format.deviceSubtitle(d, macOnline: true), "在线 · 共享给 lin · 已禁用访问")
+  }
+
+  func testTokenLineSaysWhatHappensNext() {
+    let now = Date(timeIntervalSince1970: 1_791_500_000)
+    let soon = now.addingTimeInterval(10 * 86400)
+    let later = now.addingTimeInterval(90 * 86400)
+    XCTAssertFalse(Format.token(expires: later, renews: true, renewError: "", now: now).attention)
+    XCTAssertTrue(Format.token(expires: later, renews: true, renewError: "", now: now).text.hasSuffix("到期，自动续期"))
+    // A development token: nothing renews it; close to the date it asks for attention.
+    XCTAssertFalse(Format.token(expires: later, renews: false, renewError: "", now: now).attention)
+    XCTAssertTrue(Format.token(expires: soon, renews: false, renewError: "", now: now).attention)
+    XCTAssertTrue(Format.token(expires: soon, renews: false, renewError: "", now: now).text.contains("不能自动续期"))
+    let failed = Format.token(expires: later, renews: true, renewError: "issuer unreachable", now: now)
+    XCTAssertTrue(failed.attention)
+    XCTAssertTrue(failed.text.contains("续期失败：issuer unreachable"))
+    XCTAssertTrue(Format.token(expires: now.addingTimeInterval(-60), renews: true, renewError: "", now: now).text.contains("过期"))
+    XCTAssertFalse(Format.token(expires: later, renews: nil, renewError: "", now: now).text.contains("续期"))
+  }
+
+  func testPairedDevice() {
+    XCTAssertEqual(Format.pairedDevice(user: "xiaolu", label: ""), "xiaolu 的手机")
+    XCTAssertEqual(Format.pairedDevice(user: "xiaolu", label: "iPhone 17 Pro Max"), "xiaolu 的 iPhone 17 Pro Max")
+  }
+
+  /// A folder shared inside another lists its own sessions; each session shows once, under
+  /// the innermost folder, whose options the daemon applies.
+  func testNestedDirectoriesListEachSessionOnce() {
+    let outer = SharedDirectory(path: "/w", agent: .codex, sharesNewSessions: true)
+    let inner = SharedDirectory(path: "/w/app", agent: .codex, sharesNewSessions: false)
+    let now = Date()
+    let all = [
+      Session(id: "a", agent: .codex, directory: "/w/app/src", title: "", state: .idle, updatedAt: now, shared: false),
+      Session(id: "b", agent: .codex, directory: "/w/docs", title: "", state: .running, updatedAt: now, shared: true),
+    ]
+    for dirs in [[outer, inner], [inner, outer]] {
+      XCTAssertEqual(Grouping.sessions(ownedBy: outer, among: dirs, from: all).map(\.id), ["b"])
+      XCTAssertEqual(Grouping.sessions(ownedBy: inner, among: dirs, from: all).map(\.id), ["a"])
+    }
+    // Everything under the outer folder, for the "anything still running?" check.
+    XCTAssertEqual(Grouping.sessions(in: outer, from: all).map(\.id), ["a", "b"])
+  }
+
   func testGrouping() {
     let dir = SharedDirectory(path: "/Users/k/App", agent: .codex, sharesNewSessions: true)
     let now = Date()

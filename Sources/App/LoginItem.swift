@@ -1,25 +1,19 @@
 import Foundation
 import ServiceManagement
 
-/// "开机时启动": the app registered as a launch agent from its own bundle. launchd starts it
-/// at login and, with `KeepAlive: {SuccessfulExit: false}` in the plist, starts it again
-/// after a crash but not after a normal quit (stage 0 verified the semantics). Sharing only
-/// exists while the app runs, so this is on by default once the machine is set up.
+/// "开机时启动": a plain login item for the app (SMAppService.mainApp). Sharing only exists
+/// while the app runs, so this is on by default once the machine is set up.
+///
+/// It does not bring the app back after a crash. The launch agent in the bundle
+/// (`KeepAlive: {SuccessfulExit: false}`, restart after a crash but not after a quit; stage 0
+/// verified it) would, but registering an agent whose RunAtLoad is true starts a second copy
+/// of the running app, so it is not registered. Taking it up means handing the running copy
+/// over to launchd, which restarts the daemon and drops the phones for a moment.
 @MainActor
 enum LoginItem {
-  static let plistName = "com.his1devil.lucicontrol.plist"
-
-  /// The plain login item. The agent plist in the bundle (crash restart) is not used yet:
-  /// registering an agent whose RunAtLoad is true starts a second copy of a running app.
   private static var service: SMAppService { .mainApp }
 
   static var isEnabled: Bool { service.status == .enabled }
-
-  /// Whether the plist is in this bundle at all (development builds may lack it).
-  static var isAvailable: Bool {
-    Bundle.main.bundleURL.appendingPathComponent("Contents/Library/LaunchAgents/" + plistName).path.isEmpty == false
-      && FileManager.default.fileExists(atPath: Bundle.main.bundleURL.appendingPathComponent("Contents/Library/LaunchAgents/" + plistName).path)
-  }
 
   static func set(_ on: Bool) throws {
     if on {

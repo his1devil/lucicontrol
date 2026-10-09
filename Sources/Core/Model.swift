@@ -90,7 +90,10 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
   /// The yptd user the phone belongs to.
   public var user: String
   public var isOwner: Bool
+  /// Connected to the relay, as of the last roster this Mac heard.
   public var online: Bool
+  /// Said hello to this Mac with a valid token: it has a session here, not only the relay.
+  public var verified: Bool
   /// Sessions the phone currently has open.
   public var watching: Int
   /// Blocked on this machine (the device page's switch off).
@@ -98,15 +101,38 @@ public struct Device: Identifiable, Hashable, Codable, Sendable {
   /// Removed from the list on this machine; still blocked, can be restored.
   public var removed: Bool
 
-  public init(id: String, label: String, user: String, isOwner: Bool, online: Bool, watching: Int = 0, blocked: Bool = false, removed: Bool = false) {
+  public init(id: String, label: String, user: String, isOwner: Bool, online: Bool, verified: Bool = true, watching: Int = 0, blocked: Bool = false, removed: Bool = false) {
     self.id = id
     self.label = label
     self.user = user
     self.isOwner = isOwner
     self.online = online
+    self.verified = verified
     self.watching = watching
     self.blocked = blocked
     self.removed = removed
+  }
+}
+
+/// Where a phone stands, as the device page says it. The roster is only as good as this
+/// Mac's own link: without it the last one heard says nothing about now.
+public enum DevicePresence: Equatable, Sendable {
+  /// This Mac is not connected (paused, connecting, restarting): nobody can tell.
+  case unknown
+  case offline
+  /// On the relay, without a session with this Mac yet (just resumed, app in another view).
+  case onlineElsewhere
+  /// On the relay and connected to this Mac.
+  case connected
+
+  public init(_ device: Device, macOnline: Bool) {
+    if !macOnline {
+      self = .unknown
+    } else if !device.online {
+      self = .offline
+    } else {
+      self = device.verified ? .connected : .onlineElsewhere
+    }
   }
 }
 
@@ -181,14 +207,27 @@ public struct MachineInfo: Hashable, Codable, Sendable {
   public var daemonVersion: String
   public var agentVersion: String
   public var tokenExpiresAt: Date?
+  /// Why the relay link is down, while it is; empty when it is up or nothing went wrong.
+  public var linkError: String
+  /// Why the daemon cannot reach Codex, while it cannot.
+  public var agentError: String
+  /// Whether the token renews itself; nil from a daemon that does not say.
+  public var tokenRenews: Bool?
+  /// Why the last renewal failed; empty once one succeeds.
+  public var tokenRenewError: String
 
-  public init(label: String, owner: String, appVersion: String, daemonVersion: String, agentVersion: String, tokenExpiresAt: Date?) {
+  public init(label: String, owner: String, appVersion: String, daemonVersion: String, agentVersion: String, tokenExpiresAt: Date?,
+              linkError: String = "", agentError: String = "", tokenRenews: Bool? = nil, tokenRenewError: String = "") {
     self.label = label
     self.owner = owner
     self.appVersion = appVersion
     self.daemonVersion = daemonVersion
     self.agentVersion = agentVersion
     self.tokenExpiresAt = tokenExpiresAt
+    self.linkError = linkError
+    self.agentError = agentError
+    self.tokenRenews = tokenRenews
+    self.tokenRenewError = tokenRenewError
   }
 }
 

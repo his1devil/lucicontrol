@@ -1,0 +1,12 @@
+{"op":"ready","machine":{"id":"m1","label":"test","os":"darwin","agent":"codex","version":"0.3.0","enabled":true,"shares":[{"path":"/work","addedAt":1791530000000,"existing":true,"new":false}],"viewers":1},"threads":[{"id":"t1","cwd":"/work/app","title":"修复登录\u0085页面","updatedAt":1791550000000,"status":"active","waiting":false,"running":true,"lastSeq":0,"createdAt":1791540000000}],"state":{"paired":true,"owner":"owner","daemon":{"version":"0.3.0","pid":27849},"link":{"online":false,"error":"dial tcp: connection refused"},"agent":{"found":true,"running":false,"mode":"managed"},"tokenExpiresAt":1794066681,"tokenRenews":true,"tokenRenewError":"issuer unreachable"},"devices":[{"id":"p1","user":"owner","label":"iPhone 17 Pro Max","owner":true,"online":true,"verified":true,"watching":1,"blocked":false}]}
+{"op":"reply","id":1,"result":{"ok":true}}
+{"op":"threads","threads":[{"id":"t1","cwd":"/work/app","title":"修复登录\u0085页面","updatedAt":1791550000000,"status":"active","waiting":false,"running":true,"lastSeq":0,"createdAt":1791540000000,"shared":true}]}
+{"op":"reply","id":2,"result":{"ok":true}}
+{"op":"devices","devices":[{"id":"p1","user":"owner","label":"iPhone 17 Pro Max","owner":true,"online":true,"verified":true,"watching":1,"blocked":false}]}
+{"op":"reply","id":3,"result":{"shares":[{"path":"/work","addedAt":1791530000000,"existing":true,"new":false}],"candidates":[{"path":"/work/app","threads":1,"updatedAt":1791550000000,"shared":true}]}}
+{"op":"status","machine":{"id":"m1","label":"test","os":"darwin","agent":"codex","version":"0.3.0","enabled":true,"shares":[{"path":"/work","addedAt":1791530000000,"existing":true,"new":false}],"viewers":1},"state":{"paired":true,"owner":"owner","daemon":{"version":"0.3.0","pid":27849},"link":{"online":false,"error":"dial tcp: connection refused"},"agent":{"found":true,"running":false,"mode":"managed"},"tokenExpiresAt":1794066681,"tokenRenews":true,"tokenRenewError":"issuer unreachable"}}
+{"op":"reply","id":5,"result":{"checks":[{"ok":true,"what":"已连接手机账号","detail":"owner"},{"ok":false,"what":"中继连接","detail":"dial tcp: connection refused"}]}}
+{"op":"pair","pair":{"state":"waiting","code":"A7K3QD","payload":"lucirun://pair?code=A7K3QD","expiresAt":1791550300000}}
+{"op":"pair","pair":{"state":"claimed","code":"A7K3QD","user":"owner"}}
+{"op":"pair","pair":{"state":"done","user":"owner"}}
+{"op":"reply","id":6,"error":{"code":"remove-failed","msg":"找不到这个共享会话，请刷新后重试"}}

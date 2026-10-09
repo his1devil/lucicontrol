@@ -41,8 +41,8 @@ public enum DemoData {
   }
 
   public static func machine() -> MachineInfo {
-    MachineInfo(label: "fatMac", owner: "xiaolu", appVersion: "0.1.0", daemonVersion: "0.1.0", agentVersion: "codex 0.159.0",
-                tokenExpiresAt: Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 28)))
+    MachineInfo(label: "fatMac", owner: "xiaolu", appVersion: "0.3.0", daemonVersion: "0.3.0", agentVersion: "codex 0.159.0",
+                tokenExpiresAt: Calendar.current.date(from: DateComponents(year: 2026, month: 10, day: 28)), tokenRenews: true)
   }
 
   public static let updateNotes = ["自动识别 Claude Code 会话", "中继连接断线后更快恢复", "修复目录开关偶尔不同步"]

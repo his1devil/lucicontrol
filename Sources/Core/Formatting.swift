@@ -30,6 +30,30 @@ public enum Format {
     return String(n.prefix(3)) + "-" + String(n.dropFirst(3))
   }
 
+  /// The settings page's token line, and whether it needs the person's attention.
+  public static func token(expires: Date, renews: Bool?, renewError: String, now: Date = Date()) -> (text: String, attention: Bool) {
+    let day = DateFormatter()
+    day.dateFormat = "yyyy-MM-dd"
+    let date = day.string(from: expires)
+    if expires <= now { return ("已于 \(date) 过期，需要重新配对", true) }
+    if !renewError.isEmpty { return ("\(date) 到期 · 续期失败：\(renewError)", true) }
+    switch renews {
+    case false?:
+      // A development token: nothing renews it, the machine pairs again before the date.
+      return ("\(date) 到期 · 不能自动续期，到期前要重新配对", expires.timeIntervalSince(now) < 30 * 86400)
+    case true?:
+      return ("\(date) 到期，自动续期", false)
+    case nil:
+      return ("\(date) 到期", false)
+    }
+  }
+
+  /// The phone a pairing connected: "xiaolu 的 iPhone 17 Pro Max", or "xiaolu 的手机" when
+  /// the relay did not say which phone it was (it does not today).
+  public static func pairedDevice(user: String, label: String) -> String {
+    label.isEmpty ? "\(user) 的手机" : "\(user) 的 \(label)"
+  }
+
   /// "4:52" for the seconds left on a pairing code.
   public static func countdown(until: Date, now: Date = Date()) -> String {
     let s = max(0, Int(until.timeIntervalSince(now).rounded(.down)))
@@ -49,19 +73,51 @@ public enum Format {
     if session.state == .idle { return "\(state) · \(relative(session.updatedAt, now: now))" }
     return state
   }
+
+  /// A device row's subtitle: where the phone stands, whose it is, what it is doing.
+  /// `macOnline` is this Mac's own relay link; without it the roster is old news.
+  public static func deviceSubtitle(_ device: Device, macOnline: Bool) -> String {
+    let presence = DevicePresence(device, macOnline: macOnline)
+    var parts: [String] = []
+    switch presence {
+    case .unknown: parts.append("状态未知")
+    case .offline: parts.append("离线")
+    // A blocked phone is never let in, so "not connected here" says nothing new.
+    case .onlineElsewhere: parts.append(device.blocked ? "在线" : "在线 · 未连接这台 Mac")
+    case .connected: parts.append("在线")
+    }
+    if !device.isOwner { parts.append("共享给 \(device.user)") }
+    if device.blocked {
+      parts.append("已禁用访问")
+    } else if presence == .connected, device.watching > 0 {
+      parts.append("正在看 \(device.watching) 个会话")
+    }
+    return parts.joined(separator: " · ")
+  }
 }
 
 /// How sessions are grouped into sections and ordered inside them.
 public enum Grouping {
-  /// The sessions that belong to a shared directory: those whose cwd is the directory or
-  /// lies inside it (case-insensitive, like the file system).
+  /// Every session under a shared directory: those whose cwd is the directory or lies inside
+  /// it (case-insensitive, like the file system), nested shared directories included.
   public static func sessions(in directory: SharedDirectory, from all: [Session]) -> [Session] {
+    all.filter { holds(directory, $0) }
+  }
+
+  /// The sessions a directory's section lists: those whose innermost shared directory it
+  /// is, the one whose options the daemon applies. A folder shared inside another lists
+  /// its own sessions; each session shows once.
+  public static func sessions(ownedBy directory: SharedDirectory, among dirs: [SharedDirectory], from all: [Session]) -> [Session] {
+    // Of two shared directories that both hold a session, the longer path is the inner one.
+    let deeper = dirs.filter { $0.id != directory.id && $0.agent == directory.agent && $0.path.count > directory.path.count }
+    return all.filter { s in holds(directory, s) && !deeper.contains { holds($0, s) } }
+  }
+
+  private static func holds(_ directory: SharedDirectory, _ session: Session) -> Bool {
+    guard session.agent == directory.agent else { return false }
     let root = directory.path.lowercased()
-    return all.filter { s in
-      guard s.agent == directory.agent else { return false }
-      let cwd = s.directory.lowercased()
-      return cwd == root || cwd.hasPrefix(root + "/")
-    }
+    let cwd = session.directory.lowercased()
+    return cwd == root || cwd.hasPrefix(root + "/")
   }
 
   /// Waiting first, then running, then the rest by recency.

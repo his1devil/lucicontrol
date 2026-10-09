@@ -23,11 +23,13 @@ struct PanelRoot: View {
     .frame(width: DS.panelWidth)
     .background(DS.panel)
     .clipShape(RoundedRectangle(cornerRadius: DS.panelRadius, style: .circular))
-    .task {
-      // Relative times and the pairing countdown tick once a second, while the panel shows.
+    .task(id: model.panelVisible) {
+      // Relative times and the pairing countdown tick once a second, while the panel shows;
+      // a hidden panel does not wake the app at all.
+      guard model.panelVisible else { return }
       while !Task.isCancelled {
         try? await Task.sleep(for: .seconds(1))
-        if model.panelVisible { model.now = Date() }
+        if !Task.isCancelled { model.now = Date() }
       }
     }
   }
@@ -52,14 +54,15 @@ struct FooterBar: View {
       .padding(.trailing, 4)
       .accessibilityIdentifier("footer-add")
 
+      let status = model.footerStatus
       Button { model.togglePause() } label: {
         HStack(spacing: 8) {
           Circle().fill(dotColor).frame(width: 6, height: 6)
-          Text(model.lastError ?? model.sharing.label).font(.ui(10)).foregroundStyle(model.lastError == nil ? DS.ink2 : DS.waitingText).lineLimit(1)
+          Text(status.text).font(.ui(10)).foregroundStyle(status.isError ? DS.waitingText : DS.ink2).lineLimit(1)
         }
         .contentShape(Rectangle())
       }
-      .help(model.lastError ?? pauseHelp)
+      .help(status.help.isEmpty ? pauseHelp : status.help)
       .buttonStyle(.plain)
       .accessibilityIdentifier("footer-status")
 
@@ -69,7 +72,7 @@ struct FooterBar: View {
         FooterIcon(symbol: "arrow.down.to.line", size: 13, color: DS.accentText, help: "有新版本") { model.page = .settings }
       }
       FooterIcon(symbol: "iphone", size: 13, help: model.sharing == .unpaired ? "连接手机" : "设备") {
-        if model.sharing == .unpaired { model.startPairing() } else { model.page = .devices }
+        if model.sharing == .unpaired { model.startPairing() } else { model.openDevices() }
       }
       FooterIcon(symbol: "gearshape", size: 13, help: "设置") { model.page = .settings }
       FooterIcon(symbol: "power", size: 13, help: "退出 LuciControl") { NSApp.terminate(nil) }

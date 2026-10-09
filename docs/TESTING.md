@@ -80,10 +80,11 @@
 
 | 步骤 | 预期 |
 |---|---|
-| 底栏齿轮 | 已配对设备、更新（目前是占位，阶段 5 做）、通用、本机、退出 |
-| 本机 | 机器名 fatMac、账号 xiaolu、Codex 版本、令牌 2026-10-28 到期 |
+| 底栏齿轮 | 已配对设备、更新、通用、本机、退出 |
+| 本机 | 机器名、账号、Codex 版本、令牌到期日和能否自动续期；中继或 Codex 连不上时多一行原因（橙色） |
 | 「开机时启动」关掉再打开 | 系统设置 → 通用 → 登录项与扩展 里 LuciControl 跟着消失、出现 |
-| 「体检」「打开日志」 | 还没接，点了没反应（已知） |
+| 「体检」 | 弹框列出 daemon 的各项检查，✓ / ✗ |
+| 「打开日志」 | Finder 里选中 `lucirund.log`；同目录有 `lucirund.stderr.log`（daemon 的错误输出与崩溃栈） |
 
 ## 先别做的
 
@@ -106,3 +107,21 @@
 - 统一移除、退出、开机启动提示的模态展示。确认框作为主面板的上方子窗口；在 NSAlert 的真实模态循环中临时降低主面板层级，避免 runModal 的默认层级低于 popUpMenu。关闭后解除关联并恢复原层级、焦点与 modalActive 状态。
 - App 11 项测试通过。新增真实 AppKit 模态窗口测试，在 WindowServer 的屏幕窗口列表中检查确认框位于主面板之前；确认/取消后恢复层级，面板原本隐藏时不意外打开。
 - 原生演示界面实际点测移除与退出确认，确认框可见，Escape 取消后主面板保持打开、列表不变。截图与日志保存在 `build/validation/0.1.2-5/`。
+
+
+## 2026-10-09：0.3.0 候选（工作树，未发布）
+
+分发出去的机器上「CPU 高、启动后无响应」：
+
+- 根因（已复现）：lucirund 只在 codex 启动失败时退避，codex 启动成功后马上退出时立即重启。用握手后即退出的假 codex 跑 0.1.2 的 daemon 5 秒：codex 启动 973 次、推给面板 2920 条、日志 4870 行、daemon CPU 4.7 秒；修复后 2 次、7 条、14 行、0.05 秒。0.1.1 带的 daemon 同样有这个问题。
+- 同一实验里 0.1.2 的 App 每秒收约 600 条推送仍只占 3% CPU，主要开销在 daemon 与反复启动的 codex。
+- 新版日志写成 `agent: app-server exited after 1ms …; restarting in 2s`；App 的系统日志：`/usr/bin/log show --predicate 'subsystem == "com.his1devil.lucicontrol"'`（zsh 里要写全路径）。
+
+验证：
+
+- lucirund：`go test ./...`、`go test -race ./internal/daemon` 通过；新测试覆盖退避、暂停与断线时手机离线、离开名单的手机删除、失效共享目录不挡添加、管道转义 U+0085、面板往返不改变会话可见性。
+- 协议对照：`LUCICONTROL_FIXTURES=../lucicontrol/Tests/Core/Fixtures go test ./internal/daemon -run TestExportControlFixtures` 导出控制通道的真实消息，`swift test` 的 ContractTests 逐条解码，核对字段与单位。它查出 daemon 发给面板的共享目录缺了 `addedAt` / `existing` / `new`，面板加目录时会把这些目录的会话全部变成对手机可见；已修。
+- 嵌套共享目录：daemon 取最里层的目录决定会话是否可见（原先取配置里的第一个，里层目录的选项不起作用），面板把每个会话只列在最里层目录下。
+- 「选择…」文件框：新增真实 AppKit 测试，确认它在 WindowServer 的窗口顺序里排在面板前面。
+- Core 24 项、App 21 项测试通过。端到端：新 App + 新 daemon + 坏 codex，两个进程 CPU 均为 0%，7 秒内只重启 2 到 3 次。
+- 没有在 Intel 真机、旧系统（14/15）、实体 iPhone 上重新验收。

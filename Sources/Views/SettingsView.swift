@@ -14,7 +14,7 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 20) {
           VStack(alignment: .leading, spacing: 8) {
             SectionLabel(text: "设备")
-            Button { model.page = .devices } label: {
+            Button { model.openDevices() } label: {
               HStack(spacing: 10) {
                 Image(systemName: "iphone").font(.system(size: 12, weight: .regular)).foregroundStyle(DS.ink)
                 Text("已配对设备").font(.ui(11.5)).foregroundStyle(DS.ink)
@@ -48,16 +48,24 @@ struct SettingsView: View {
               VStack(alignment: .leading, spacing: 4) {
                 infoRow("机器名", m.label)
                 infoRow("账号", m.owner)
-                infoRow("Codex", m.agentVersion)
+                if m.agentError.isEmpty {
+                  infoRow("Codex", m.agentVersion)
+                } else {
+                  infoRow("Codex", "连不上：\(m.agentError)", attention: true)
+                }
+                if !m.linkError.isEmpty {
+                  infoRow("中继", "连不上：\(m.linkError)", attention: true)
+                }
                 if let exp = m.tokenExpiresAt {
-                  infoRow("令牌", "\(shortDate(exp)) 到期，自动续期")
+                  let token = Format.token(expires: exp, renews: m.tokenRenews, renewError: m.tokenRenewError, now: model.now)
+                  infoRow("令牌", token.text, attention: token.attention)
                 }
               }
               .padding(12)
               .background(DS.fill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
               HStack(spacing: 14) {
-                linkButton("体检") {}
-                linkButton("打开日志") {}
+                linkButton("体检") { model.runDoctor() }
+                linkButton("打开日志") { model.openLogs() }
                 linkButton("重新配对") { model.startPairing() }
               }
               .padding(.top, 2)
@@ -84,21 +92,16 @@ struct SettingsView: View {
     }
   }
 
-  private func infoRow(_ k: String, _ v: String) -> some View {
+  /// One fact; a long one is cut at the end and shown whole on hover.
+  private func infoRow(_ k: String, _ v: String, attention: Bool = false) -> some View {
     HStack(spacing: 10) {
       Text(k).font(.ui(10.5)).foregroundStyle(DS.ink2).frame(width: 44, alignment: .leading)
-      Text(v).font(.ui(10.5)).foregroundStyle(DS.ink).lineLimit(1)
+      Text(v).font(.ui(10.5)).foregroundStyle(attention ? DS.waitingText : DS.ink).lineLimit(1).help(v)
     }
   }
 
   private func linkButton(_ title: String, action: @escaping () -> Void) -> some View {
     Button(title, action: action).buttonStyle(.plain).font(.ui(11)).foregroundStyle(DS.accentText)
-  }
-
-  private func shortDate(_ d: Date) -> String {
-    let f = DateFormatter()
-    f.dateFormat = "yyyy-MM-dd"
-    return f.string(from: d)
   }
 }
 

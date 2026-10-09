@@ -4,8 +4,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
-VERSION="${RELEASE_VERSION:-0.1.2}"
-BUILD="${RELEASE_BUILD:-5}"
+# Version and build default to project.yml, the one place they live.
+setting() { awk -v key="$1:" '$1 == key { print $2; exit }' project.yml; }
+VERSION="${RELEASE_VERSION:-$(setting MARKETING_VERSION)}"
+BUILD="${RELEASE_BUILD:-$(setting CURRENT_PROJECT_VERSION)}"
 IDENTITY="${SIGNING_IDENTITY:-Developer ID Application: Antai Feng (M7ZSWL69E9)}"
 TEAM="${DEVELOPER_TEAM:-M7ZSWL69E9}"
 PROFILE="${NOTARY_PROFILE:-lucicontrol-notary}"

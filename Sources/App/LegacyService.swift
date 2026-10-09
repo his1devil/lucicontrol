@@ -14,6 +14,8 @@ enum LegacyService {
 
   /// Unloads the service and removes its plist. The plist is kept next to the daemon's
   /// data as `legacy-launchagent.plist`, in case someone wants the command-line service back.
+  /// Taking over twice is harmless: with the plist already gone the backup stays as it is.
+  /// Blocks for launchctl and a moment after it; call it off the main thread.
   static func takeOver() throws {
     let domain = "gui/\(getuid())"
     let bootout = Process()
@@ -23,12 +25,16 @@ enum LegacyService {
     bootout.standardOutput = FileHandle.nullDevice
     try bootout.run()
     bootout.waitUntilExit()
-    let backup = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/lucirund/legacy-launchagent.plist")
-    try? FileManager.default.createDirectory(at: backup.deletingLastPathComponent(), withIntermediateDirectories: true)
-    try? FileManager.default.removeItem(at: backup)
-    try? FileManager.default.copyItem(at: plistURL, to: backup)
-    try FileManager.default.removeItem(at: plistURL)
-    // launchctl returns before the job is gone; give it a moment.
+    let fm = FileManager.default
+    if fm.fileExists(atPath: plistURL.path) {
+      let backup = fm.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/lucirund/legacy-launchagent.plist")
+      try? fm.createDirectory(at: backup.deletingLastPathComponent(), withIntermediateDirectories: true)
+      try? fm.removeItem(at: backup)
+      try? fm.copyItem(at: plistURL, to: backup)
+      try fm.removeItem(at: plistURL)
+    }
+    // launchctl returns before the job is gone; give it a moment. If its daemon still holds
+    // the lock after this, ours reports it and the panel retries (DaemonBackend).
     Thread.sleep(forTimeInterval: 0.5)
   }
 }

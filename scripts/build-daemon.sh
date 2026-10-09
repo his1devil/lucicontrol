@@ -9,7 +9,9 @@ mkdir -p "$out"
 if ! command -v go >/dev/null 2>&1; then
   export PATH="$PATH:/opt/homebrew/bin:/usr/local/go/bin"
 fi
-daemon_version="${LUCIRUND_VERSION:-0.2.0}"
+# The daemon carries the app's version, then its own commit: Xcode's MARKETING_VERSION when
+# Xcode runs this (a release may override it), else project.yml, where it lives.
+daemon_version="${LUCIRUND_VERSION:-${MARKETING_VERSION:-$(awk '$1 == "MARKETING_VERSION:" { print $2; exit }' project.yml)}}"
 version=$(cd "$src" && git describe --always --dirty 2>/dev/null || echo dev)
 (cd "$src" && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-X lucirund/internal/daemon.Version=$daemon_version+$version" -o "$out/lucirund-arm64" ./cmd/lucirund)
 (cd "$src" && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "-X lucirund/internal/daemon.Version=$daemon_version+$version" -o "$out/lucirund-amd64" ./cmd/lucirund)

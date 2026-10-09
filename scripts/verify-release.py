@@ -26,4 +26,8 @@ for path in app.rglob('*'):
     assert 'runtime' in sig, f'Missing hardened runtime: {path}'
     count += 1
 assert count >= 6, f'Expected app, daemon and Sparkle helpers; only found {count}'
-print(f'Universal architectures + Developer ID + timestamp + hardened runtime verified for {count} Mach-O files.')
+# One version for the app and the daemon it carries (project.yml is where it lives).
+version = info['CFBundleShortVersionString']
+daemon = subprocess.check_output([str(app / 'Contents/MacOS/lucirund'), 'version'], text=True).strip()
+assert daemon.startswith(f'lucirund {version}+'), f'Daemon reports {daemon!r}, the app is {version}'
+print(f'Universal architectures + Developer ID + timestamp + hardened runtime verified for {count} Mach-O files; app and daemon are both {version}.')

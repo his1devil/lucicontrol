@@ -99,16 +99,13 @@ struct AddDirectoryView: View {
   }
 
   private func choose() {
-    model.modalActive = true
-    defer { model.modalActive = false }
     let panel = NSOpenPanel()
     panel.canChooseDirectories = true
     panel.canChooseFiles = false
     panel.allowsMultipleSelection = false
     panel.prompt = "选择"
     panel.message = "选择要给手机访问的项目目录"
-    NSApp.activate(ignoringOtherApps: true)
-    if panel.runModal() == .OK, let url = panel.url {
+    if model.runModalOpenPanel(panel) == .OK, let url = panel.url {
       model.addPath = url.path
     }
   }

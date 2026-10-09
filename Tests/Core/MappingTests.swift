@@ -7,7 +7,7 @@ final class MappingTests: XCTestCase {
     {"op":"ready","machine":{"id":"m1","label":"fatMac","enabled":true,"shares":[{"path":"/a","addedAt":5,"existing":true,"new":false}]},
      "threads":[{"id":"t1","cwd":"/a/x","title":"Hi","updatedAt":1700000000000,"status":"idle","waiting":true,"running":false,"shared":true,"createdAt":1}],
      "devices":[{"id":"p1","user":"kai","owner":true,"online":true,"verified":true,"watching":2,"blocked":false}],
-     "state":{"paired":true,"owner":"kai","daemon":{"version":"0.2.0","pid":1},"link":{"online":true},"agent":{"found":true,"running":true,"version":"codex 1","mode":"managed"},"tokenExpiresAt":1793145600}}
+     "state":{"paired":true,"owner":"kai","daemon":{"version":"0.3.0","pid":1},"link":{"online":true},"agent":{"found":true,"running":true,"version":"codex 1","mode":"managed"},"tokenExpiresAt":1793145600}}
     """
     let m = try JSONDecoder().decode(DaemonMessage.self, from: Data(json.utf8))
     XCTAssertEqual(m.op, "ready")
@@ -19,8 +19,10 @@ final class MappingTests: XCTestCase {
     XCTAssertEqual(s.directory, "/a/x")
     let d = Mapping.device(m.devices![0], removed: [])
     XCTAssertEqual(d.label, "kai 的手机")
+    XCTAssertTrue(d.verified)
+    XCTAssertEqual(DevicePresence(d, macOnline: true), .connected)
     XCTAssertEqual(Mapping.sharing(state: m.state!, machine: m.machine), .sharing)
-    let info = Mapping.machine(state: m.state!, machine: m.machine, appVersion: "0.1.0")
+    let info = Mapping.machine(state: m.state!, machine: m.machine, appVersion: "0.3.0")
     XCTAssertEqual(info.owner, "kai")
     XCTAssertEqual(info.agentVersion, "codex 1")
     XCTAssertNotNil(info.tokenExpiresAt)
@@ -47,6 +49,19 @@ final class MappingTests: XCTestCase {
     XCTAssertEqual(out[0].new, false)
     XCTAssertNotNil(out[1].addedAt)
     XCTAssertEqual(out[1].existing, true)
+  }
+
+  /// A share without a date (added from a phone) shares every thread whatever its switch
+  /// says; switching it gives it a date, so the switch means something from then on.
+  func testSwitchingAnUndatedShareGivesItADate() {
+    let now = Date(timeIntervalSince1970: 1_791_600_000)
+    let fromPhone = [WireShare(path: "/p")]
+    let unchanged = Mapping.shares([SharedDirectory(path: "/p", agent: .codex, sharesNewSessions: true)], existing: fromPhone, now: now)
+    XCTAssertNil(unchanged[0].addedAt)
+    let off = Mapping.shares([SharedDirectory(path: "/p", agent: .codex, sharesNewSessions: false)], existing: fromPhone, now: now)
+    XCTAssertEqual(off[0].addedAt, 1_791_600_000_000)
+    XCTAssertEqual(off[0].existing, true)
+    XCTAssertEqual(off[0].new, false)
   }
 
   func testPairingStates() {

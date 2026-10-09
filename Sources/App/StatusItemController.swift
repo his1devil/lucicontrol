@@ -10,6 +10,8 @@ final class StatusItemController: NSObject {
   private let model: PanelModel
   private var dropTarget: DropTargetView?
   private var observation: Task<Void, Never>?
+  /// What the icon shows now; every status push re-runs `refreshIcon`, most change nothing.
+  private var iconState: MenuBarIcon.State?
 
   init(panel: PanelController, model: PanelModel) {
     self.panel = panel
@@ -73,6 +75,10 @@ final class StatusItemController: NSObject {
     } else {
       state = .off
     }
+    // Everything above is read on every pass (observation tracking needs it); the image
+    // and the status bar's re-layout only when the state is new.
+    guard state != iconState else { return }
+    iconState = state
     item.button?.image = MenuBarIcon.image(for: state)
   }
 
@@ -87,6 +93,8 @@ final class StatusItemController: NSObject {
 
   private func showMenu() {
     let menu = NSMenu()
+    // Otherwise NSMenu enables every item whose target answers, and ignores isEnabled below.
+    menu.autoenablesItems = false
     menu.addItem(withTitle: "打开面板", action: #selector(openPanel), keyEquivalent: "").target = self
     let pause = NSMenuItem(title: model.sharing == .paused ? "恢复共享" : "暂停共享", action: #selector(togglePause), keyEquivalent: "")
     pause.target = self

@@ -21,8 +21,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private var backend: DaemonBackend?
   private var updater: UpdateController?
   private var terminationPending = false
+  /// macOS is logging out, restarting or shutting down: nobody is there to answer a question.
+  private var poweringOff = false
 
   static func main() {
+    // A write to a daemon that has just exited must fail with EPIPE, which the control
+    // channel handles, instead of killing the app (SIGPIPE's default action).
+    signal(SIGPIPE, SIG_IGN)
     let app = NSApplication.shared
     let delegate = AppDelegate()
     app.delegate = delegate
@@ -31,6 +36,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
+    NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willPowerOffNotification, object: nil, queue: .main) { [weak self] _ in
+      MainActor.assumeIsolated { self?.poweringOff = true }
+    }
     // Unit-test hosts must not start a daemon or check the live update feed.
     if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
       model = PanelModel()
@@ -43,6 +51,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     if let appearance = value("--appearance") {
       NSApp.appearance = NSAppearance(named: appearance == "dark" ? .darkAqua : .aqua)
+    }
+    // One-shot development commands: answer and quit before a daemon or a panel exists.
+    if let dir = value("--icons") {
+      Self.writeIcons(to: dir)
+      exit(0)
+    }
+    if let what = value("--login-item") {
+      // Development check of the login item: on | off | status.
+      if what == "on" { try? LoginItem.set(true) }
+      if what == "off" { try? LoginItem.set(false) }
+      print("login item: \(LoginItem.statusText)")
+      exit(0)
     }
     if args.contains("--demo") {
       model = PanelModel.demo()
@@ -69,7 +89,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       case "devices": model.page = .devices
       case "settings": model.page = .settings
       case "settings-latest": model.page = .settings; model.update = .latest(checkedAt: Date())
-      case "settings-downloading": model.page = .settings; model.update = .downloading(version: "0.2.0", progress: 0.45)
+      case "settings-downloading": model.page = .settings; model.update = .downloading(version: "0.4.0", progress: 0.45)
       case "codex-missing": model.page = .codexMissing
       case "codex-login": model.codexProblem = .notLoggedIn; model.page = .codexMissing
       case "takeover": model.page = .takeover
@@ -83,20 +103,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     panel.profiling = args.contains("--profile")
     backend?.start()
     // Isolated daemon runs and UI fixtures never use the production update feed.
-    if !model.isDemo, value("--data-dir") == nil,
-       !args.contains("--login-item"), !args.contains("--icons") {
+    if !model.isDemo, value("--data-dir") == nil {
       updater = UpdateController(model: model)
-    }
-    if let dir = value("--icons") {
-      Self.writeIcons(to: dir)
-      exit(0)
-    }
-    if let what = value("--login-item") {
-      // Development check of the launch-agent registration: on | off | status.
-      if what == "on" { try? LoginItem.set(true) }
-      if what == "off" { try? LoginItem.set(false) }
-      print("login item: \(LoginItem.statusText) (plist in bundle: \(LoginItem.isAvailable))")
-      exit(0)
     }
     if args.contains("--window") {
       showInWindow()
@@ -149,12 +157,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   }
 
   /// Quitting switches sharing off, so it always asks first; with a phone connected or a
-  /// phone-started turn running the message says what stops.
+  /// phone-started turn running the message says what stops. A logout, restart or
+  /// shutdown does not ask: nobody may be there, and the question would hold it up.
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
     if terminationPending { return .terminateLater }
+    let systemQuit = poweringOff || Self.isSystemQuit(NSAppleEventManager.shared().currentAppleEvent)
     // Sparkle already asked to install. Active sessions still require explicit consent
-    // when a quit happens outside its postponed-relaunch path.
-    if updater?.isRestarting != true || model.hasActiveSessions {
+    // when a quit happens outside its postponed-relaunch path, unless 仍要安装 gave it.
+    if !systemQuit, updater?.isRestarting != true || (model.hasActiveSessions && updater?.restartConfirmed != true) {
       let alert = NSAlert()
       alert.messageText = "退出 LuciControl？"
       alert.informativeText = model.quitWarning
@@ -171,6 +181,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       NSApp.reply(toApplicationShouldTerminate: true)
     }
     return .terminateLater
+  }
+
+  /// Whether a quit event is part of a logout, restart or shutdown, as loginwindow's says
+  /// (kAEQuitReason; documented as a parameter, sent as an attribute in practice).
+  nonisolated static func isSystemQuit(_ event: NSAppleEventDescriptor?) -> Bool {
+    guard let event, event.eventClass == AEEventClass(kCoreEventClass), event.eventID == AEEventID(kAEQuitApplication),
+          let why = event.attributeDescriptor(forKeyword: AEKeyword(kAEQuitReason)) ?? event.paramDescriptor(forKeyword: AEKeyword(kAEQuitReason))
+    else { return false }
+    let reasons = [kAEShutDown, kAERestart, kAEReallyLogOut, kAELogOut, kAEShowRestartDialog, kAEShowShutdownDialog].map { OSType($0) }
+    return reasons.contains(why.typeCodeValue) || reasons.contains(why.enumCodeValue)
   }
 
   /// The four menu bar icon states at 4x, light and dark, for a look at the drawing.

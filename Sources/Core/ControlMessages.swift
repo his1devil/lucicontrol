@@ -107,7 +107,12 @@ public struct WireState: Decodable, Sendable {
   public var daemon: Daemon
   public var link: Link
   public var agent: Agent
+  /// Unix seconds, as in the token (the other times on the wire are milliseconds).
   public var tokenExpiresAt: Int64?
+  /// Whether the daemon renews the token itself (false: the retired development key's,
+  /// which means pairing again before it expires), and why the last renewal failed.
+  public var tokenRenews: Bool?
+  public var tokenRenewError: String?
 }
 
 public struct WirePair: Decodable, Sendable {

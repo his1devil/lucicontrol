@@ -60,9 +60,13 @@ final class PanelModel {
   @ObservationIgnored var backend: DaemonBackend?
   @ObservationIgnored weak var updater: UpdateController?
 
-  /// The last request that failed, shown in the footer for a moment.
+  /// The last request that failed, shown in the footer for a moment (`showError`).
   var lastError: String?
+  @ObservationIgnored private var errorGeneration = 0
   var isRemoving = false
+
+  /// Where the device page's back button goes: the page it was opened from.
+  var devicesReturnPage: PanelPage = .settings
 
   /// What is wrong with Codex on this Mac, when something is.
   var codexProblem: CodexProblem = .missing
@@ -98,7 +102,7 @@ final class PanelModel {
     m.candidates = DemoData.candidates()
     m.sharing = .sharing
     m.machine = DemoData.machine()
-    m.update = .available(version: "0.2.0", notes: DemoData.updateNotes)
+    m.update = .available(version: "0.4.0", notes: DemoData.updateNotes)
     return m
   }
 
@@ -110,8 +114,9 @@ final class PanelModel {
     directories.filter { $0.agent == agent }
   }
 
+  /// The sessions the directory's section lists: its own, not those of a folder shared inside it.
   func sessions(in dir: SharedDirectory) -> [Session] {
-    Grouping.ordered(Grouping.sessions(in: dir, from: sessions))
+    Grouping.ordered(Grouping.sessions(ownedBy: dir, among: directories, from: sessions))
   }
 
   /// Sessions that live in one of the agent's shared directories.
@@ -128,11 +133,33 @@ final class PanelModel {
 
   var visibleDevices: [Device] { devices.filter { !$0.removed } }
 
-  /// Phones connected right now, i.e. online and not blocked.
-  var connectedDevices: [Device] { devices.filter { $0.online && !$0.blocked } }
+  /// This Mac's own relay link is up: only then does the roster say anything about now.
+  var macOnline: Bool { sharing == .sharing }
 
-  var quitNeedsConfirmation: Bool {
-    sharing == .sharing && (!connectedDevices.isEmpty || sessions.contains { $0.state == .running && $0.shared })
+  /// Phones with a session on this Mac right now: on the relay, verified here, not blocked.
+  var connectedDevices: [Device] {
+    devices.filter { !$0.blocked && DevicePresence($0, macOnline: macOnline) == .connected }
+  }
+
+  /// The footer's status line, its tooltip (empty: the pause hint), and whether it is bad news.
+  var footerStatus: (text: String, help: String, isError: Bool) {
+    if let lastError { return (lastError, lastError, true) }
+    if sharing == .connecting, let reason = machine?.linkError, !reason.isEmpty {
+      return ("连不上中继，正在重试", reason, true)
+    }
+    return (sharing.label, "", false)
+  }
+
+  /// Shows a failure in the footer for a few seconds; a newer one replaces it.
+  func showError(_ message: String) {
+    lastError = message
+    errorGeneration += 1
+    let generation = errorGeneration
+    Task { [weak self] in
+      try? await Task.sleep(for: .seconds(6))
+      guard let self, self.errorGeneration == generation else { return }
+      self.lastError = nil
+    }
   }
 
   var quitWarning: String {
@@ -152,10 +179,17 @@ final class PanelModel {
 
   // MARK: actions
 
+  /// The switches show the new value at once and go back if the daemon did not take it: a
+  /// session shown private while phones still see it is worse than a switch that bounces.
   func toggleSession(_ id: String) {
     guard let i = sessions.firstIndex(where: { $0.id == id }) else { return }
-    sessions[i].shared.toggle()
-    backend?.setSessionShared(id, sessions[i].shared)
+    let shared = !sessions[i].shared
+    sessions[i].shared = shared
+    guard let backend else { return }
+    Task {
+      guard !(await backend.setSessionShared(id, shared)) else { return }
+      if let j = sessions.firstIndex(where: { $0.id == id }), sessions[j].shared == shared { sessions[j].shared = !shared }
+    }
   }
 
   func toggleExpanded(_ dir: SharedDirectory) {
@@ -165,13 +199,18 @@ final class PanelModel {
   func setNewSessionsShared(_ dir: SharedDirectory, _ on: Bool) {
     guard let i = directories.firstIndex(where: { $0.id == dir.id }) else { return }
     directories[i].sharesNewSessions = on
-    backend?.saveDirectories()
+    guard let backend else { return }
+    Task {
+      guard !(await backend.saveDirectories()) else { return }
+      if let j = directories.firstIndex(where: { $0.id == dir.id }), directories[j].sharesNewSessions == on { directories[j].sharesNewSessions = !on }
+    }
   }
 
   func canRemove(_ session: Session) -> Bool { !isRemoving && session.state == .idle }
 
   func canRemove(_ directory: SharedDirectory) -> Bool {
-    !isRemoving && sessions(in: directory).allSatisfy { $0.state == .idle }
+    // As the daemon checks it: nothing under the folder may be running, nested folders too.
+    !isRemoving && Grouping.sessions(in: directory, from: sessions).allSatisfy { $0.state == .idle }
   }
 
   func requestSessionRemoval(_ session: Session) {
@@ -205,7 +244,7 @@ final class PanelModel {
       else if !isDemo { throw backendUnavailable }
       sessions.removeAll { $0.id == session.id }
       lastError = nil
-    } catch { lastError = "移除失败：\((error as? RPCError)?.msg ?? error.localizedDescription)" }
+    } catch { showError("移除失败：\(DaemonBackend.describe(error))") }
   }
 
   func removeDirectory(_ dir: SharedDirectory) async {
@@ -218,7 +257,7 @@ final class PanelModel {
       directories.removeAll { $0.id == dir.id }
       expanded.remove(dir.id)
       lastError = nil
-    } catch { lastError = "移除失败：\((error as? RPCError)?.msg ?? error.localizedDescription)" }
+    } catch { showError("移除失败：\(DaemonBackend.describe(error))") }
   }
 
   private var backendUnavailable: NSError {
@@ -237,14 +276,26 @@ final class PanelModel {
 
   func toggleDeviceBlocked(_ id: String) {
     guard let i = devices.firstIndex(where: { $0.id == id }) else { return }
-    devices[i].blocked.toggle()
-    backend?.setDeviceBlocked(id, devices[i].blocked)
+    let blocked = !devices[i].blocked
+    devices[i].blocked = blocked
+    guard let backend else { return }
+    Task {
+      // A phone shown blocked while it can still connect is the worse kind of wrong.
+      guard !(await backend.setDeviceBlocked(id, blocked)) else { return }
+      if let j = devices.firstIndex(where: { $0.id == id }), devices[j].blocked == blocked { devices[j].blocked = !blocked }
+    }
+  }
+
+  /// The device page, with its back button returning here.
+  func openDevices() {
+    if page != .devices { devicesReturnPage = page }
+    page = .devices
   }
 
   func removeDevice(_ id: String) {
     guard let i = devices.firstIndex(where: { $0.id == id }) else { return }
     if let backend {
-      backend.removeDevice(id)
+      Task { await backend.removeDevice(id) }
       return
     }
     devices[i].blocked = true
@@ -254,11 +305,36 @@ final class PanelModel {
   func restoreDevice(_ id: String) {
     guard let i = devices.firstIndex(where: { $0.id == id }) else { return }
     if let backend {
-      backend.restoreDevice(id)
+      Task { await backend.restoreDevice(id) }
       return
     }
     devices[i].blocked = false
     devices[i].removed = false
+  }
+
+  /// The whole roster as the daemon has it now (the device page opening).
+  func refreshDevices() {
+    backend?.refreshDevices()
+  }
+
+  /// 体检: the daemon's checks, in a dialog.
+  func runDoctor() {
+    guard let backend else { return }
+    Task {
+      let checks = await backend.doctor()
+      let alert = NSAlert()
+      alert.messageText = "体检"
+      alert.informativeText = checks.isEmpty
+        ? "后台没有响应，稍后再试。"
+        : checks.map { "\($0.ok ? "✓" : "✗") \($0.what)" + (($0.detail ?? "").isEmpty ? "" : "：\($0.detail!)") }.joined(separator: "\n")
+      alert.addButton(withTitle: "好")
+      _ = runModalAlert(alert)
+    }
+  }
+
+  /// 打开日志: the daemon's log, selected in Finder.
+  func openLogs() {
+    backend?.openLogs()
   }
 
   func openAdd(path: String = "") {
@@ -346,7 +422,7 @@ final class PanelModel {
     do {
       try LoginItem.set(on)
     } catch {
-      lastError = "开机启动设置失败：\(error.localizedDescription)"
+      showError("开机启动设置失败：\(error.localizedDescription)")
       launchAtLogin = LoginItem.isEnabled
     }
   }

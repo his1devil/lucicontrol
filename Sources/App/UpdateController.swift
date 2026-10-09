@@ -11,6 +11,10 @@ final class UpdateController: NSObject, SPUUpdaterDelegate, @preconcurrency SPUS
   private var preferenceObservers: [NSKeyValueObservation] = []
   private var pendingInstall: (() -> Void)?
   private(set) var isRestarting = false
+  /// The person chose to install although something was running: quitting does not ask again.
+  private(set) var restartConfirmed = false
+  /// Answers the 仍要安装 question instead of a dialog (tests).
+  var confirmInstallAnyway: (() -> Bool)?
 
   init(model: PanelModel, start: Bool = true) {
     self.model = model
@@ -54,9 +58,12 @@ final class UpdateController: NSObject, SPUUpdaterDelegate, @preconcurrency SPUS
 
   func installPendingUpdate() {
     guard let install = pendingInstall else { checkForUpdates(); return }
-    guard !model.updateRestartBlocked else {
-      model.lastError = "请等待服务就绪并结束正在运行或等待确认的会话，再安装更新。"
-      return
+    if model.updateRestartBlocked {
+      // Installing now cuts off a running turn, or restarts a daemon that is not up. Say so
+      // and let the person decide: a daemon that never comes up would otherwise keep the
+      // update that fixes it from ever installing.
+      guard (confirmInstallAnyway ?? askToInstallAnyway)() else { return }
+      restartConfirmed = true
     }
     pendingInstall = nil
     isRestarting = true
@@ -64,6 +71,18 @@ final class UpdateController: NSObject, SPUUpdaterDelegate, @preconcurrency SPUS
     // Actual process shutdown is awaited by applicationShouldTerminate. Sparkle
     // observes termination before replacing the app and its embedded daemon.
     install()
+  }
+
+  private func askToInstallAnyway() -> Bool {
+    let alert = NSAlert()
+    alert.messageText = "现在安装更新？"
+    alert.informativeText = model.hasActiveSessions
+      ? "有会话正在运行或等待确认。安装会重启 LuciControl，手机那边正在进行的操作会中断。"
+      : "后台服务还没有就绪。安装会重启 LuciControl。"
+    alert.alertStyle = .warning
+    alert.addButton(withTitle: "仍要安装")
+    alert.addButton(withTitle: "取消").keyEquivalent = "\u{1b}"
+    return model.runModalAlert(alert) == .alertFirstButtonReturn
   }
 
   var supportsGentleScheduledUpdateReminders: Bool { true }
@@ -134,6 +153,7 @@ final class UpdateController: NSObject, SPUUpdaterDelegate, @preconcurrency SPUS
 
   func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
     isRestarting = false
+    restartConfirmed = false
     pendingInstall = nil
     let error = error as NSError
     // No-update is delivered separately with its compatibility reason.
@@ -144,5 +164,13 @@ final class UpdateController: NSObject, SPUUpdaterDelegate, @preconcurrency SPUS
   func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
     // Closing the update window without downloading must not leave 'checking'.
     if case .checking = model.update { model.update = .unchecked }
+  }
+
+  /// "跳过此版本" in Sparkle's window: it will not offer this version again unless asked, so
+  /// the menu bar and the footer stop pointing at it. (Its own selector: an optional
+  /// requirement whose Swift name does not match would simply never be called.)
+  @objc(updater:userDidMakeChoice:forUpdate:state:)
+  func updater(_ updater: SPUUpdater, userDidMake choice: SPUUserUpdateChoice, forUpdate updateItem: SUAppcastItem, state: SPUUserUpdateState) {
+    if choice == .skip { model.update = .unchecked }
   }
 }

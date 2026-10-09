@@ -12,6 +12,8 @@ let package = Package(
     ],
     targets: [
         .target(name: "LuciControlCore", path: "Sources/Core"),
-        .testTarget(name: "LuciControlCoreTests", dependencies: ["LuciControlCore"], path: "Tests/Core"),
+        // Fixtures: what lucirund's control channel sends (ContractTests reads them from the
+        // source tree; lucirund's TestExportControlFixtures writes them).
+        .testTarget(name: "LuciControlCoreTests", dependencies: ["LuciControlCore"], path: "Tests/Core", exclude: ["Fixtures"]),
     ]
 )

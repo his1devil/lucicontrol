@@ -56,7 +56,7 @@ xcodebuild -project LuciControl.xcodeproj -scheme LuciControl -configuration Deb
 SPARKLE_TOOLS=/path/to/Sparkle/bin scripts/release.sh
 ```
 
-正式发布默认要求 App 和 daemon 工作树干净。本地候选验证可显式设置 `ALLOW_DIRTY=1`，产物 `source.json` 会标记 dirty，不能将其描述为已经打 tag 的提交产物。每次构建使用唯一且递增的 `RELEASE_BUILD`，脚本拒绝覆盖已有输出目录。`RELEASE_VERSION`、`RELEASE_BUILD` 必须与准备发布的版本一致；默认值为 0.1.2 / 5。
+正式发布默认要求 App 和 daemon 工作树干净。本地候选验证可显式设置 `ALLOW_DIRTY=1`，产物 `source.json` 会标记 dirty，不能将其描述为已经打 tag 的提交产物。每次构建使用唯一且递增的 `RELEASE_BUILD`，脚本拒绝覆盖已有输出目录。版本号只在 `project.yml` 一处（`MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`，现为 0.3.0 / 6）：`release.sh` 的默认值、包内 lucirund 的版本（`build-daemon.sh` 注入，后缀为 daemon 的提交号）都从这里来，`verify-release.py` 拒绝 App 与 daemon 版本不一致的包。build 号是只增不减的整数，Sparkle 用它判断新旧，不能写成 0.3.0（那会小于已发布的 5，0.1.x 的机器就收不到更新）。`RELEASE_VERSION`、`RELEASE_BUILD` 只在临时覆盖时使用。
 
 脚本执行 Archive / Developer ID Export，检查包内每个 Mach-O 的两种架构、签名、Hardened Runtime 和时间戳，提交 Apple 公证，staple App 和 DMG，验证 Gatekeeper，生成携带更新包 Ed25519 签名的清单。构建过程保留公证结果 JSON、日志和来源记录。签名失败立即终止。
 

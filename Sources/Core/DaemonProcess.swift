@@ -33,8 +33,17 @@ public final class DaemonProcess {
   public var control: ControlClient? { client }
   public var isRunning: Bool { process?.isRunning ?? false }
 
+  /// The daemon's log directory, `$LUCIRUND_DIR/logs`, by default in Application Support.
+  public static func logDirectory(environment: [String: String]) -> URL {
+    let base = environment["LUCIRUND_DIR"].map { URL(fileURLWithPath: $0) }
+      ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/lucirund")
+    return base.appendingPathComponent("logs", isDirectory: true)
+  }
+
   public func start() {
     stopped = false
+    // A start while one runs (or is about to be restarted) must not orphan it.
+    guard process == nil else { return }
     launch()
   }
 
@@ -70,7 +79,7 @@ public final class DaemonProcess {
     let stdout = Pipe()
     p.standardInput = stdin
     p.standardOutput = stdout
-    p.standardError = FileHandle.standardError
+    p.standardError = Self.stderrLog(in: Self.logDirectory(environment: env)) ?? FileHandle.standardError
     let c = ControlClient(reading: stdout.fileHandleForReading, writing: stdin.fileHandleForWriting, onPush: onPush)
     p.terminationHandler = { [weak self] proc in
       Task { @MainActor in self?.exited(proc) }
@@ -108,16 +117,42 @@ public final class DaemonProcess {
       self.launch()
     }
   }
+
+  /// The daemon's stderr, kept next to its log and rotated past 1 MB. A GUI app's own stderr
+  /// goes nowhere, and stderr is where `main` reports a failure before the log is open and
+  /// the Go runtime a crash.
+  static func stderrLog(in dir: URL) -> FileHandle? {
+    let fm = FileManager.default
+    let url = dir.appendingPathComponent("lucirund.stderr.log")
+    try? fm.createDirectory(at: dir, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+    if let size = (try? fm.attributesOfItem(atPath: url.path))?[.size] as? Int, size > 1 << 20 {
+      let old = url.appendingPathExtension("1")
+      try? fm.removeItem(at: old)
+      try? fm.moveItem(at: url, to: old)
+    }
+    if !fm.fileExists(atPath: url.path) {
+      fm.createFile(atPath: url.path, contents: nil, attributes: [.posixPermissions: 0o600])
+    }
+    guard let handle = try? FileHandle(forWritingTo: url) else { return nil }
+    _ = try? handle.seekToEnd()
+    let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
+    // Local time in lucirund.log's own format, so the two files line up.
+    let stamp = DateFormatter()
+    stamp.dateFormat = "yyyy/MM/dd HH:mm:ss"
+    try? handle.write(contentsOf: Data("--- \(stamp.string(from: Date())) lucirund started by LuciControl \(version)\n".utf8))
+    return handle
+  }
 }
 
-/// Runs a cancellation-cooperative `body` with a deadline; on timeout it throws
-/// `ControlError.closed`. The losing task must finish before the group can return.
-func withTimeout<T: Sendable>(seconds: Double, _ body: @escaping @Sendable () async throws -> T) async throws -> T {
+/// Runs a cancellation-cooperative `body` with a deadline; on timeout it throws `error`
+/// (`ControlError.closed` unless told otherwise). The losing task must finish before the
+/// group can return.
+func withTimeout<T: Sendable>(seconds: Double, throwing error: any Error = ControlError.closed, _ body: @escaping @Sendable () async throws -> T) async throws -> T {
   try await withThrowingTaskGroup(of: T.self) { group in
     group.addTask { try await body() }
     group.addTask {
       try await Task.sleep(for: .seconds(seconds))
-      throw ControlError.closed
+      throw error
     }
     defer { group.cancelAll() }
     return try await group.next()!
