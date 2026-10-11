@@ -1,8 +1,14 @@
 # LuciControl 发布与更新
 
-更新时间：2026-10-10。当前公开分发版本 0.3.1 (7)，macOS 14+，Universal（arm64 / x86_64）。
+更新时间：2026-10-11。当前公开分发版本 0.3.2 (8)，macOS 14+，Universal（arm64 / x86_64）。
 
-## 当前公开版本 0.3.1 (7)
+## 当前公开版本 0.3.2 (8)
+
+2026-10-11 发布。内置 lucirund 0.3.2：Codex 的权限档申请（`item/permissions/requestApproval`）和 MCP 工具的确认 / 填表（`mcpServer/elicitation/request`，computer use 等）此前在托管模式下被留给「别的客户端」，手机上没有推送也没有卡片，会话一直卡着；现在两种都开成手机卡片并能从手机回答。推送文字改为「会话标题 + 要批的事 / 用时」，不带机器名（中继 2026-10-11 16:48 已更新）。说明见 `docs/releases/0.3.2.html`；配合手机端 Luci Run 0.1.0 (20)。
+
+从干净的已提交源码构建：App `543142d6d215f9ba818166646113ac86b70074cf`（标签 `v0.3.2`），后台 `20d30ebbb664f5dfa16882def68dc6b13f0f1838`，包内 daemon 自报 `lucirund 0.3.2+20d30eb`。App 与 DMG 通过 Developer ID 签名、Apple 公证（App `16a89032-a621-4329-af25-b05805ff3ba5`，DMG `c2b76e41-d03b-412a-b782-51c50199bcc3`）、staple 与 Gatekeeper；7 个 Mach-O 均含两种架构；更新 ZIP 的 Ed25519 签名用 App 内置公钥验证通过，改动一个字节即失败。Package 测试 24 项、后台 `go test ./...`（含新增的权限档 / MCP 确认往返测试）通过。两个下载渠道的文件匿名完整下载后逐字节一致；正式 appcast 已原子切换到 build 8，保留 7、6、5、3（备份 `/root/app/remote/.release-lucicontrol-0.3.2-8/appcast-before.xml`）；中继健康，CLI 的 `SHA256SUMS` 未改动。产物与 `publication.json` 在 `build/releases/0.3.2-8/`。本机 `/Applications/LuciControl.app` 当天早些时候已换成同源码的 Developer ID 签名构建（daemon 自报 `0.3.2+b55b291-dirty`，代码与 20d30eb 相同），由维护者自己退出 0.3.1 后安装；公证版本身没有在本机运行。
+
+## 历史版本 0.3.1 (7)
 
 2026-10-10 发布。确认框（移除会话、移除共享目录、退出、开机启动）重新显示在屏幕正中：0.1.2 起它先挂到面板上再弹出，出现在未摆放的初始位置，偏左约 400pt。说明见 `docs/releases/0.3.1.html`。内置后台代码与 0.3.0 相同，默认版本号改为 0.3.1。
 
@@ -24,7 +30,7 @@
 
 LuciControl.app 包含 lucirund，Sparkle 2.10.0 升级整个 App。手机配对、身份、共享目录保存在 `~/Library/Application Support/lucirund`，安装脚本和更新器不删除该目录。旧 CLI LaunchAgent 需要经过 App 的接管流程，不能同时运行两套 daemon。
 
-主更新源固定为 `https://im.zhanghuanyang.com/lucirund/dist/appcast.xml`。版本文件先部署到同一下载站，再原子替换 appcast。正式下载站已发布 0.3.1 (7)，公开 DMG 与 ZIP 完整下载后的 SHA256 与本机一致；线上 appcast 返回 200、`application/xml` 与 `no-cache, max-age=0, must-revalidate`，版本、大小和 Ed25519 签名核对通过。维护者已授权公开源码与版本标签；[GitHub Release v0.3.1](https://github.com/his1devil/lucicontrol/releases/tag/v0.3.1) 已发布，使用与主下载站完全相同的签名包，匿名完整下载后的 SHA256 核对通过。客户端没有自动切换镜像；国内、海外网络质量仍需分别实测。
+主更新源固定为 `https://im.zhanghuanyang.com/lucirund/dist/appcast.xml`。版本文件先部署到同一下载站，再原子替换 appcast。正式下载站已发布 0.3.2 (8)，公开 DMG 与 ZIP 完整下载后的 SHA256 与本机一致；线上 appcast 返回 200、`application/xml` 与 `no-cache, max-age=0, must-revalidate`，版本、大小和 Ed25519 签名核对通过。维护者已授权公开源码与版本标签；[GitHub Release v0.3.2](https://github.com/his1devil/lucicontrol/releases/tag/v0.3.2) 已发布，使用与主下载站完全相同的签名包，匿名完整下载后的 SHA256 核对通过。客户端没有自动切换镜像；国内、海外网络质量仍需分别实测。
 
 首次安装用 DMG，将 App 拖入 Applications。安装窗口参考 `yptd-desktop`：白底、600 × 380 点窗口、左右 120 点图标，紫色弧形箭头像笑脸并指向 Applications；顶部提供中英双语拖拽提示。Applications 是指向系统应用目录的真实快捷入口，背景包含 1x / 2x 分辨率。已经安装的 0.1.0 没有 Sparkle，需要先手动安装一次新版本，后续才能收到自动更新。手机继续使用 Luci Run 内部 TestFlight；这份 Mac 包不走 TestFlight。
 
@@ -70,7 +76,7 @@ xcodebuild -project LuciControl.xcodeproj -scheme LuciControl -configuration Deb
 SPARKLE_TOOLS=/path/to/Sparkle/bin scripts/release.sh
 ```
 
-正式发布默认要求 App 和 daemon 工作树干净。本地候选验证可显式设置 `ALLOW_DIRTY=1`，产物 `source.json` 会标记 dirty，不能将其描述为已经打 tag 的提交产物。每次构建使用唯一且递增的 `RELEASE_BUILD`，脚本拒绝覆盖已有输出目录。版本号只在 `project.yml` 一处（`MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`，现为 0.3.1 / 7）：`release.sh` 的默认值、包内 lucirund 的版本（`build-daemon.sh` 注入，后缀为 daemon 的提交号）都从这里来，`verify-release.py` 拒绝 App 与 daemon 版本不一致的包。build 号是只增不减的整数，Sparkle 用它判断新旧，不能写成 0.3.0（那会小于已发布的 5，0.1.x 的机器就收不到更新）。`RELEASE_VERSION`、`RELEASE_BUILD` 只在临时覆盖时使用。
+正式发布默认要求 App 和 daemon 工作树干净。本地候选验证可显式设置 `ALLOW_DIRTY=1`，产物 `source.json` 会标记 dirty，不能将其描述为已经打 tag 的提交产物。每次构建使用唯一且递增的 `RELEASE_BUILD`，脚本拒绝覆盖已有输出目录。版本号只在 `project.yml` 一处（`MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`，现为 0.3.2 / 8）：`release.sh` 的默认值、包内 lucirund 的版本（`build-daemon.sh` 注入，后缀为 daemon 的提交号）都从这里来，`verify-release.py` 拒绝 App 与 daemon 版本不一致的包。build 号是只增不减的整数，Sparkle 用它判断新旧，不能写成 0.3.0（那会小于已发布的 5，0.1.x 的机器就收不到更新）。`RELEASE_VERSION`、`RELEASE_BUILD` 只在临时覆盖时使用。
 
 脚本执行 Archive / Developer ID Export，检查包内每个 Mach-O 的两种架构、签名、Hardened Runtime 和时间戳，提交 Apple 公证，staple App 和 DMG，验证 Gatekeeper，生成携带更新包 Ed25519 签名的清单。构建过程保留公证结果 JSON、日志和来源记录。签名失败立即终止。
 
@@ -85,6 +91,18 @@ SPARKLE_TOOLS=/path/to/Sparkle/bin scripts/release.sh
 - `export/LuciControl.app`：最终 App。
 
 脚本只准备本机产物，并向 Apple 提交公证；不上传服务器或 GitHub。
+
+## 公开下载（2026-10-11，0.3.2 / 8）
+
+- [安装包：LuciControl 0.3.2 (8) Universal DMG](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.3.2-8-universal.dmg)
+- [更新包 ZIP](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.3.2-8.zip)
+- [GitHub 备用下载与更新说明](https://github.com/his1devil/lucicontrol/releases/tag/v0.3.2)
+- [SHA256 校验文件](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.3.2-8.sha256)
+- [自动更新清单](https://im.zhanghuanyang.com/lucirund/dist/appcast.xml)
+
+DMG SHA256：`01b9d7db90b02f8b7bd32a940022c7711b413c2b36ac81c5526edee6432cc704`。ZIP SHA256：`4222266ed220e418de6c3418476fbef2244f3d37d6a6431cfb8f23881a083f11`。
+
+切换前线上清单是 0.3.1 发布时的那份（`9afed336…`），新清单 `be813253…`：把新条目插进原清单，其余条目一字未改（直接对线上清单跑 `generate_appcast` 只会保留三个版本）。版本文件先以 `.part` 上传到 `/root/app/remote/static/dist/`、核对后改名。旧版本包与 CLI 的校验清单均未覆盖。
 
 ## 公开下载（2026-10-10，0.3.1 / 7）
 
