@@ -1,8 +1,14 @@
 # LuciControl 发布与更新
 
-更新时间：2026-10-11（晚）。当前公开分发版本 0.3.3 (9)，macOS 14+，Universal（arm64 / x86_64）。
+更新时间：2026-10-19（凌晨）。当前公开分发版本 0.4.0 (11)，macOS 14+，Universal（arm64 / x86_64）。
 
-## 当前公开版本 0.3.3 (9)
+## 当前公开版本 0.4.0 (11)
+
+2026-10-19 凌晨发布。内置 lucirund 0.4.0：手机可以接上电脑上的 Claude Code 会话——终端里 `lucirund tty -- claude` 起会话（App 自带这个命令，`~/.local/bin/lucirund` 可软链到包内），手机和终端共享同一条会话：手机发的消息在终端里出现并被回答，终端里敲的提示手机也看得到；Claude 要改文件、跑命令时手机收到授权卡（终端的对话框同时开着，谁先答算谁的）；手机上能换模型和强度（`/model`、`/effort`）、打断回合、发图片；Claude 会话只给机器主人的手机看。面板新增 Claude 标签页（会话逐条开关共享、移除），设置里有「Claude 会话改东西前一律先问」开关（config `claudeForceAsk`；本机装了自动放行的 hook 时打开，手机才能收到授权卡），体检报告 Claude Code 是否安装。说明见 `docs/releases/0.4.0.html`。手机端对应的 Claude 支持在 Luci Run 的下一个 TestFlight 构建（0.1.0 (22)，尚未上传）里。
+
+从干净的已提交源码构建：App `d436743`（标签 `v0.4.0`），后台 `845f052`，包内 daemon 自报 `lucirund 0.4.0+845f052`。App 与 DMG 通过 Developer ID 签名、Apple 公证（App `14b4872f-e6ec-4d54-bf6c-9dfe3e0c0b85`，DMG `f3dbcda6-a5e4-4736-b6e9-0f1344a749be`）、staple 与 Gatekeeper；更新 ZIP 的 Ed25519 签名用 App 内置公钥验证通过，改动一个字节即失败。Package 测试 24 项、App 测试 21 项、后台 `go test ./...`（含 internal/claude 与 daemon 的 Claude 测试）通过；真实 `claude` 端到端 19/19 与模型选择 8/8。两个下载渠道的文件匿名完整下载后逐字节一致；正式 appcast 已原子切换到 build 11，保留 9、8、7、6、5、3（备份 `/root/app/remote/.release-lucicontrol-0.4.0-11/appcast-before.xml`）；中继健康。产物与 `publication.json` 在 `build/releases/0.4.0-11/`。build 10 是发布前装在本机的本地开发构建（同一后台源码的未提交树，daemon 自报 `0.4.0+1a88ff1-dirty`），公开版用 11，Sparkle 会把它更新上去。
+
+## 历史版本 0.3.3 (9)
 
 2026-10-11 晚发布。内置 lucirund 0.3.3：手机上可以给每条会话选「请求批准 / 替我批准 / 完全访问」（`thread.settings` 的 `approval`，映射到 Codex 的 approvalPolicy、sandboxPolicy、approvalsReviewer 三项），下一回合起生效，电脑上的终端跟着改；终端里用 `/permissions` 改的，手机 10 秒内跟上。完全访问只有机器主人的手机能开，主人的手机也不再被「完全访问」锁住。修复手机上档位显示不准：会话列表每次刷新都把已知档位丢掉，终端刚开的会话改档位时通知也被忽略。列表刷新从 15 秒改为 10 秒。说明见 `docs/releases/0.3.3.html`；配合手机端 Luci Run 0.1.0 (21)。
 
@@ -36,7 +42,7 @@
 
 LuciControl.app 包含 lucirund，Sparkle 2.10.0 升级整个 App。手机配对、身份、共享目录保存在 `~/Library/Application Support/lucirund`，安装脚本和更新器不删除该目录。旧 CLI LaunchAgent 需要经过 App 的接管流程，不能同时运行两套 daemon。
 
-主更新源固定为 `https://im.zhanghuanyang.com/lucirund/dist/appcast.xml`。版本文件先部署到同一下载站，再原子替换 appcast。正式下载站已发布 0.3.3 (9)，公开 DMG 与 ZIP 完整下载后的 SHA256 与本机一致；线上 appcast 返回 200、`application/xml` 与 `no-cache, max-age=0, must-revalidate`，版本、大小和 Ed25519 签名核对通过。维护者已授权公开源码与版本标签；[GitHub Release v0.3.3](https://github.com/his1devil/lucicontrol/releases/tag/v0.3.3) 已发布，使用与主下载站完全相同的签名包，匿名完整下载后的 SHA256 核对通过。客户端没有自动切换镜像；国内、海外网络质量仍需分别实测。
+主更新源固定为 `https://im.zhanghuanyang.com/lucirund/dist/appcast.xml`。版本文件先部署到同一下载站，再原子替换 appcast。正式下载站已发布 0.4.0 (11)，公开 DMG 与 ZIP 完整下载后的 SHA256 与本机一致；线上 appcast 返回 200、`application/xml` 与 `no-cache, max-age=0, must-revalidate`，版本、大小和 Ed25519 签名核对通过。维护者已授权公开源码与版本标签；[GitHub Release v0.4.0](https://github.com/his1devil/lucicontrol/releases/tag/v0.4.0) 已发布，使用与主下载站完全相同的签名包，匿名完整下载后的 SHA256 核对通过。客户端没有自动切换镜像；国内、海外网络质量仍需分别实测。
 
 首次安装用 DMG，将 App 拖入 Applications。安装窗口参考 `yptd-desktop`：白底、600 × 380 点窗口、左右 120 点图标，紫色弧形箭头像笑脸并指向 Applications；顶部提供中英双语拖拽提示。Applications 是指向系统应用目录的真实快捷入口，背景包含 1x / 2x 分辨率。已经安装的 0.1.0 没有 Sparkle，需要先手动安装一次新版本，后续才能收到自动更新。手机继续使用 Luci Run 内部 TestFlight；这份 Mac 包不走 TestFlight。
 
@@ -82,7 +88,7 @@ xcodebuild -project LuciControl.xcodeproj -scheme LuciControl -configuration Deb
 SPARKLE_TOOLS=/path/to/Sparkle/bin scripts/release.sh
 ```
 
-正式发布默认要求 App 和 daemon 工作树干净。本地候选验证可显式设置 `ALLOW_DIRTY=1`，产物 `source.json` 会标记 dirty，不能将其描述为已经打 tag 的提交产物。每次构建使用唯一且递增的 `RELEASE_BUILD`，脚本拒绝覆盖已有输出目录。版本号只在 `project.yml` 一处（`MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`，现为 0.3.2 / 8）：`release.sh` 的默认值、包内 lucirund 的版本（`build-daemon.sh` 注入，后缀为 daemon 的提交号）都从这里来，`verify-release.py` 拒绝 App 与 daemon 版本不一致的包。build 号是只增不减的整数，Sparkle 用它判断新旧，不能写成 0.3.0（那会小于已发布的 5，0.1.x 的机器就收不到更新）。`RELEASE_VERSION`、`RELEASE_BUILD` 只在临时覆盖时使用。
+正式发布默认要求 App 和 daemon 工作树干净。本地候选验证可显式设置 `ALLOW_DIRTY=1`，产物 `source.json` 会标记 dirty，不能将其描述为已经打 tag 的提交产物。每次构建使用唯一且递增的 `RELEASE_BUILD`，脚本拒绝覆盖已有输出目录。版本号只在 `project.yml` 一处（`MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`，现为 0.4.0 / 11）：`release.sh` 的默认值、包内 lucirund 的版本（`build-daemon.sh` 注入，后缀为 daemon 的提交号）都从这里来，`verify-release.py` 拒绝 App 与 daemon 版本不一致的包。build 号是只增不减的整数，Sparkle 用它判断新旧，不能写成 0.3.0（那会小于已发布的 5，0.1.x 的机器就收不到更新）。`RELEASE_VERSION`、`RELEASE_BUILD` 只在临时覆盖时使用。
 
 脚本执行 Archive / Developer ID Export，检查包内每个 Mach-O 的两种架构、签名、Hardened Runtime 和时间戳，提交 Apple 公证，staple App 和 DMG，验证 Gatekeeper，生成携带更新包 Ed25519 签名的清单。构建过程保留公证结果 JSON、日志和来源记录。签名失败立即终止。
 
@@ -97,6 +103,18 @@ SPARKLE_TOOLS=/path/to/Sparkle/bin scripts/release.sh
 - `export/LuciControl.app`：最终 App。
 
 脚本只准备本机产物，并向 Apple 提交公证；不上传服务器或 GitHub。
+
+## 公开下载（2026-10-19，0.4.0 / 11）
+
+- [安装包：LuciControl 0.4.0 (11) Universal DMG](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.4.0-11-universal.dmg)
+- [更新包 ZIP](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.4.0-11.zip)
+- [GitHub 备用下载与更新说明](https://github.com/his1devil/lucicontrol/releases/tag/v0.4.0)
+- [SHA256 校验文件](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.4.0-11.sha256)
+- [自动更新清单](https://im.zhanghuanyang.com/lucirund/dist/appcast.xml)
+
+DMG SHA256：`db94ace0bcda8afb934048b928f036ea7b15001fd53d353cbad4550d50c73622`。ZIP SHA256：`240766377755c9e0143c139fbe7df202476b812053e980bf050fb915e53c99cc`。
+
+切换前线上清单是 0.3.3 发布时的那份（`2ced9e3f…`），新清单 `c54debb7…`：把新条目插进原清单，其余条目一字未改。版本文件先以 `.part` 上传到 `/root/app/remote/static/dist/`、核对后改名。
 
 ## 公开下载（2026-10-11，0.3.2 / 8）
 
