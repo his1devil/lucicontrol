@@ -1,7 +1,8 @@
 import Foundation
 
-/// A coding agent the panel can show. lucirund knows Codex today; Claude Code is a tab
-/// whose sessions arrive once the daemon learns to drive it (PLAN.md §7, stage 7).
+/// A coding agent the panel can show: Codex through app-server, Claude Code as sessions
+/// the daemon runs in its own ptys (lucirund docs/claude.md). Shared directories are the
+/// same for both; the tab says which agent's sessions a directory lists.
 public enum AgentKind: String, Codable, CaseIterable, Sendable, Identifiable {
   case codex
   case claudeCode
@@ -215,9 +216,15 @@ public struct MachineInfo: Hashable, Codable, Sendable {
   public var tokenRenews: Bool?
   /// Why the last renewal failed; empty once one succeeds.
   public var tokenRenewError: String
+  /// Claude Code on this machine: whether `claude` was found and its version, and whether
+  /// its sessions always prompt before changing things (the settings' switch).
+  public var claudeFound: Bool
+  public var claudeVersion: String
+  public var claudeForceAsk: Bool
 
   public init(label: String, owner: String, appVersion: String, daemonVersion: String, agentVersion: String, tokenExpiresAt: Date?,
-              linkError: String = "", agentError: String = "", tokenRenews: Bool? = nil, tokenRenewError: String = "") {
+              linkError: String = "", agentError: String = "", tokenRenews: Bool? = nil, tokenRenewError: String = "",
+              claudeFound: Bool = false, claudeVersion: String = "", claudeForceAsk: Bool = false) {
     self.label = label
     self.owner = owner
     self.appVersion = appVersion
@@ -228,6 +235,9 @@ public struct MachineInfo: Hashable, Codable, Sendable {
     self.agentError = agentError
     self.tokenRenews = tokenRenews
     self.tokenRenewError = tokenRenewError
+    self.claudeFound = claudeFound
+    self.claudeVersion = claudeVersion
+    self.claudeForceAsk = claudeForceAsk
   }
 }
 

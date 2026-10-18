@@ -43,6 +43,14 @@ struct SettingsView: View {
           }
 
           if let m = model.machine {
+            VStack(alignment: .leading, spacing: 4) {
+              SectionLabel(text: "Claude Code")
+              ToggleRow(title: "会话改东西前一律先问", detail: "Bash、Write、Edit 这类工具每次都弹确认，手机才能收到授权卡；本机装了自动放行的 hook 时需要开",
+                        isOn: m.claudeForceAsk, enabled: m.claudeFound) { model.setClaudeForceAsk(!m.claudeForceAsk) }
+            }
+          }
+
+          if let m = model.machine {
             VStack(alignment: .leading, spacing: 6) {
               SectionLabel(text: "本机")
               VStack(alignment: .leading, spacing: 4) {
@@ -52,6 +60,11 @@ struct SettingsView: View {
                   infoRow("Codex", m.agentVersion)
                 } else {
                   infoRow("Codex", "连不上：\(m.agentError)", attention: true)
+                }
+                if m.claudeFound {
+                  infoRow("Claude Code", m.claudeVersion.isEmpty ? "已安装" : m.claudeVersion)
+                } else {
+                  infoRow("Claude Code", "没找到 claude", attention: true)
                 }
                 if !m.linkError.isEmpty {
                   infoRow("中继", "连不上：\(m.linkError)", attention: true)

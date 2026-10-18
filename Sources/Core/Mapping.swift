@@ -15,10 +15,31 @@ public enum Mapping {
     } else {
       state = .idle
     }
-    var s = Session(id: t.id, agent: .codex, directory: t.cwd, title: t.title.isEmpty ? "（没有标题）" : t.title, state: state,
+    let claude = t.agent == "claude"
+    var s = Session(id: t.id, agent: claude ? .claudeCode : .codex, directory: t.cwd, title: t.title.isEmpty ? "（没有标题）" : t.title, state: state,
                     updatedAt: Date(timeIntervalSince1970: Double(t.updatedAt) / 1000), shared: t.shared ?? false, heldBy: t.heldBy ?? "")
     if let locked = t.locked, !locked.isEmpty { s.activity = "电脑上的设置不允许手机操作" }
+    if claude {
+      if t.status == "notLoaded" {
+        s.activity = "已结束"
+      } else if let mode = t.mode, !mode.isEmpty {
+        s.activity = claudeModeWord(mode)
+      }
+    }
     return s
+  }
+
+  /// Claude Code's permission modes, as the row's subtitle names them.
+  public static func claudeModeWord(_ mode: String) -> String {
+    switch mode {
+    case "default", "manual": "逐项询问"
+    case "acceptEdits": "自动接受编辑"
+    case "plan": "计划模式"
+    case "auto": "自动判断"
+    case "bypassPermissions": "跳过所有确认"
+    case "dontAsk": "不询问"
+    default: mode
+    }
   }
 
   public static func device(_ d: WireDevice, removed: Set<String>) -> Device {
@@ -41,7 +62,8 @@ public enum Mapping {
                 agentVersion: state.agent.version ?? machine?.agentVersion ?? "", tokenExpiresAt: state.tokenExpiresAt.map { Date(timeIntervalSince1970: Double($0)) },
                 // The link's error is only news while the link is down.
                 linkError: state.link.online ? "" : state.link.error ?? "", agentError: state.agent.error ?? "",
-                tokenRenews: state.tokenRenews, tokenRenewError: state.tokenRenewError ?? "")
+                tokenRenews: state.tokenRenews, tokenRenewError: state.tokenRenewError ?? "",
+                claudeFound: state.claude?.found ?? false, claudeVersion: state.claude?.version ?? "", claudeForceAsk: state.claude?.forceAsk ?? false)
   }
 
   public static func pairing(_ p: WirePair) -> PairingState {

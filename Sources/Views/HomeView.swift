@@ -15,6 +15,8 @@ struct HomeView: View {
         EmptyState(title: "\(model.agent.title) 支持还在做", detail: "先用 Codex。等 LuciControl 学会跟 \(model.agent.title) 说话，它的会话会出现在这里。")
       } else if dirs.isEmpty {
         EmptyState(title: "还没有共享的目录", detail: "点左下角「+ 添加目录」，选择要给手机访问的项目")
+      } else if model.agent == .claudeCode, model.sessions(for: .claudeCode).isEmpty {
+        EmptyState(title: "还没有 Claude Code 会话", detail: "在共享目录里打开终端，跑 lucirund tty -- claude；会话会出现在这里，手机上也能接上它。")
       } else {
         FittingScrollView(maxHeight: listMaxHeight) {
           LazyVStack(alignment: .leading, spacing: 0) {
@@ -125,7 +127,7 @@ struct SessionRow: View {
       HStack(spacing: 6) {
         PillToggle(isOn: on, enabled: !model.isRemoving) { model.toggleSession(session.id) }
         RemoveButton(label: "移除会话 \(session.title)", enabled: model.canRemove(session),
-                     help: model.canRemove(session) ? "移除共享会话，保留 Codex 聊天记录" : "会话正在运行或等待响应，结束后可移除") {
+                     help: model.canRemove(session) ? "移除共享会话，保留 \(session.agent.title) 聊天记录" : "会话正在运行或等待响应，结束后可移除") {
           model.requestSessionRemoval(session)
         }
         .accessibilityIdentifier("remove-session-\(session.id)")

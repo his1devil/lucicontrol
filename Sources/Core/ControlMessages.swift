@@ -70,6 +70,10 @@ public struct WireThread: Decodable, Sendable {
   public var createdAt: Int64?
   public var shared: Bool?
   public var heldBy: String?
+  /// What runs the thread: nil or "codex" for app-server, "claude" for a Claude Code session
+  /// in a pty the daemon owns; `mode` is Claude's permission mode as its hooks report it.
+  public var agent: String?
+  public var mode: String?
 }
 
 public struct WireDevice: Decodable, Sendable {
@@ -102,11 +106,20 @@ public struct WireState: Decodable, Sendable {
     public var loggedIn: Bool?
     public var account: String?
   }
+  /// Claude Code on the machine: found, its version, and whether sessions started through
+  /// the daemon always prompt before changing things (config claudeForceAsk).
+  public struct Claude: Decodable, Sendable {
+    public var found: Bool
+    public var version: String?
+    public var forceAsk: Bool
+  }
   public var paired: Bool
   public var owner: String?
   public var daemon: Daemon
   public var link: Link
   public var agent: Agent
+  /// nil from a daemon older than 0.4.0.
+  public var claude: Claude?
   /// Unix seconds, as in the token (the other times on the wire are milliseconds).
   public var tokenExpiresAt: Int64?
   /// Whether the daemon renews the token itself (false: the retired development key's,

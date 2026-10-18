@@ -1,0 +1,6 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>LuciControl 0.4.0</title><body>
+<h2>LuciControl 0.4.0（11）</h2><ul>
+<li>手机可以接上电脑上的 Claude Code 会话了：终端里用 <code>lucirund tty -- claude</code> 起会话（LuciControl 自带这个命令），手机和终端共享同一条会话——手机发的消息在终端里出现并被回答，终端里敲的提示手机也看得到；Claude 要改文件、跑命令时手机收到授权卡，终端的对话框同时开着，谁先答算谁的；手机上能换模型和强度、打断回合、发图片。Claude 会话只给机器主人的手机看。</li>
+<li>面板新增 Claude 标签页：共享目录里的 Claude 会话一样可以逐条开关共享、移除；设置里有「Claude 会话改东西前一律先问」开关（本机装了自动放行的 hook 时打开，手机才能收到授权卡）；体检会报告 Claude Code 是否安装。</li>
+<li>内置 lucirund 0.4.0：会话在守护进程自己的 pty 里跑，终端可以断开再接回；Claude 的事件通过它自带的 hooks 走本机 socket 进守护进程，<code>claude</code> 本身不连中继。</li>
+</ul><p>适用于 macOS 14 及以上，支持 Apple Silicon 与 Intel。配合手机端 Luci Run 0.1.0 (22) 使用；需要本机装好并登录 Claude Code。</p></body></html>

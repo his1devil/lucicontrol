@@ -36,7 +36,7 @@ final class PanelModel {
   /// Sections whose folded idle sessions are shown.
   var expanded: Set<String> = []
   /// Which agents the daemon can actually drive today.
-  var supportedAgents: Set<AgentKind> = [.codex]
+  var supportedAgents: Set<AgentKind> = [.codex, .claudeCode]
 
   // Settings
   var autoCheckUpdates = false
@@ -110,19 +110,21 @@ final class PanelModel {
 
   var agents: [AgentKind] { AgentKind.allCases }
 
+  /// A shared directory is shared for every agent; the tab decides whose sessions it lists.
   func directories(for agent: AgentKind) -> [SharedDirectory] {
-    directories.filter { $0.agent == agent }
+    directories
   }
 
-  /// The sessions the directory's section lists: its own, not those of a folder shared inside it.
+  /// The sessions the directory's section lists: the current tab's agent's own, not those
+  /// of a folder shared inside it.
   func sessions(in dir: SharedDirectory) -> [Session] {
-    Grouping.ordered(Grouping.sessions(ownedBy: dir, among: directories, from: sessions))
+    Grouping.ordered(Grouping.sessions(ownedBy: dir, among: directories, from: sessions.filter { $0.agent == agent }))
   }
 
-  /// Sessions that live in one of the agent's shared directories.
+  /// The agent's sessions that live in one of the shared directories.
   func sessions(for agent: AgentKind) -> [Session] {
     let dirs = directories(for: agent)
-    return sessions.filter { s in dirs.contains { Grouping.sessions(in: $0, from: [s]).isEmpty == false } }
+    return sessions.filter { s in s.agent == agent && dirs.contains { Grouping.sessions(in: $0, from: [s]).isEmpty == false } }
   }
 
   func hasWaiting(_ agent: AgentKind) -> Bool {
@@ -172,7 +174,7 @@ final class PanelModel {
   var removedDevices: [Device] { devices.filter(\.removed) }
 
   var addCandidates: [DirectoryCandidate] {
-    candidates.filter { c in c.agent == addAgent && !directories.contains { $0.path == c.path } }
+    candidates.filter { c in !directories.contains { $0.path == c.path } }
   }
 
   var addCount: Int { addSelected.count + (addPath.isEmpty ? 0 : 1) }
@@ -262,6 +264,13 @@ final class PanelModel {
 
   private var backendUnavailable: NSError {
     NSError(domain: "LuciControl", code: 1, userInfo: [NSLocalizedDescriptionKey: "后台尚未连接，请稍后重试"])
+  }
+
+  /// Whether Claude sessions always prompt before changing things (the daemon's
+  /// claudeForceAsk); the switch moves when the daemon's next status says so.
+  func setClaudeForceAsk(_ on: Bool) {
+    guard let backend else { return }
+    backend.setClaudeForceAsk(on)
   }
 
   func togglePause() {
