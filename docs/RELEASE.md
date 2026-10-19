@@ -4,7 +4,7 @@
 
 ## 当前公开版本 0.4.0 (11)
 
-2026-10-19 凌晨发布。内置 lucirund 0.4.0：手机可以接上电脑上的 Claude Code 会话——终端里 `lucirund tty -- claude` 起会话（App 自带这个命令，`~/.local/bin/lucirund` 可软链到包内），手机和终端共享同一条会话：手机发的消息在终端里出现并被回答，终端里敲的提示手机也看得到；Claude 要改文件、跑命令时手机收到授权卡（终端的对话框同时开着，谁先答算谁的）；手机上能换模型和强度（`/model`、`/effort`）、打断回合、发图片；Claude 会话只给机器主人的手机看。面板新增 Claude 标签页（会话逐条开关共享、移除），设置里有「Claude 会话改东西前一律先问」开关（config `claudeForceAsk`；本机装了自动放行的 hook 时打开，手机才能收到授权卡），体检报告 Claude Code 是否安装。说明见 `docs/releases/0.4.0.html`。手机端对应的 Claude 支持在 Luci Run 的下一个 TestFlight 构建（0.1.0 (22)，尚未上传）里。
+2026-10-19 凌晨发布。内置 lucirund 0.4.0：手机可以接上电脑上的 Claude Code 会话——终端里 `lucirund tty -- claude` 起会话（App 自带这个命令，`~/.local/bin/lucirund` 可软链到包内），手机和终端共享同一条会话：手机发的消息在终端里出现并被回答，终端里敲的提示手机也看得到；Claude 要改文件、跑命令时手机收到授权卡（终端的对话框同时开着，谁先答算谁的）；手机上能换模型和强度（`/model`、`/effort`）、打断回合、发图片；Claude 会话只给机器主人的手机看。面板新增 Claude 标签页（会话逐条开关共享、移除），设置里有「Claude 会话改东西前一律先问」开关（config `claudeForceAsk`；本机装了自动放行的 hook 时打开，手机才能收到授权卡），体检报告 Claude Code 是否安装。说明见 `docs/releases/0.4.0.html`。手机端对应的 Claude 支持在 Luci Run 0.1.0 (22) 里（TestFlight 构建，2026-10-19 09:27 上传）。
 
 从干净的已提交源码构建：App `d436743`（标签 `v0.4.0`），后台 `845f052`，包内 daemon 自报 `lucirund 0.4.0+845f052`。App 与 DMG 通过 Developer ID 签名、Apple 公证（App `14b4872f-e6ec-4d54-bf6c-9dfe3e0c0b85`，DMG `f3dbcda6-a5e4-4736-b6e9-0f1344a749be`）、staple 与 Gatekeeper；更新 ZIP 的 Ed25519 签名用 App 内置公钥验证通过，改动一个字节即失败。Package 测试 24 项、App 测试 21 项、后台 `go test ./...`（含 internal/claude 与 daemon 的 Claude 测试）通过；真实 `claude` 端到端 19/19 与模型选择 8/8。两个下载渠道的文件匿名完整下载后逐字节一致；正式 appcast 已原子切换到 build 11，保留 9、8、7、6、5、3（备份 `/root/app/remote/.release-lucicontrol-0.4.0-11/appcast-before.xml`）；中继健康。产物与 `publication.json` 在 `build/releases/0.4.0-11/`。build 10 是发布前装在本机的本地开发构建（同一后台源码的未提交树，daemon 自报 `0.4.0+1a88ff1-dirty`），公开版用 11，Sparkle 会把它更新上去。
 
