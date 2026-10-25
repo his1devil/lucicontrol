@@ -1,0 +1,9 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>LuciControl 0.5.0</title><body>
+<h2>LuciControl 0.5.0（12）</h2><ul>
+<li>在任何终端里照常运行 <code>claude</code> 就能接上手机：设置里打开「接入 Claude Code」后，在共享目录里敲 <code>claude</code>，会话就出现在面板和手机上，手机能发消息、打断、换模型、批授权。会话是你终端自己的进程，用终端自己的环境；退出或更新 LuciControl 不影响它。开关会往 Claude Code 的设置里加 hooks 和一个会话助手，关掉即删除，改之前先备份。</li>
+<li>会话助手不联网：它不含任何网络代码，跑在 macOS 沙盒里，只能连 LuciControl 的本机 socket；Claude 看不到手机和中继，手机上拒绝或叫停时它读到的说法和终端里一样。体检会列出会话助手的网络连接数（应为 0）。</li>
+<li>在跑但还没接入的会话显示为「手机只能看」，不再显示成「已结束」；接入之前就开着的会话能看、能批授权，重开一次 <code>claude</code> 后就能从手机发消息。</li>
+<li>「会话改东西前一律先问」改为只对手机上正开着的会话生效，平时在终端里用不会多出确认。</li>
+<li>修复：面板的 Claude 标签页列不出会话。</li>
+<li>内置 lucirund 0.5.0：<code>lucirund tty</code> 起的会话改用发起它的终端的环境。</li>
+</ul><p>适用于 macOS 14 及以上，支持 Apple Silicon 与 Intel。手机端 Luci Run 0.1.0 (22) 即可使用；需要本机装好并登录 Claude Code。</p></body></html>

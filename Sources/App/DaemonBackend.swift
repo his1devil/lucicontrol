@@ -285,7 +285,8 @@ final class DaemonBackend {
 
   /// What each request does, for the footer when it fails.
   private static let actions = ["threads.share": "切换会话共享", "shares.set": "更新共享目录", "remote.set": "暂停或恢复共享",
-                                "devices.block": "设置设备访问", "pair.cancel": "取消配对", "claude.forceAsk": "设置 Claude 强制询问"]
+                                "devices.block": "设置设备访问", "pair.cancel": "取消配对", "claude.forceAsk": "设置 Claude 强制询问",
+                                "claude.join": "接入 Claude Code"]
 
   // MARK: actions
 
@@ -357,6 +358,12 @@ final class DaemonBackend {
 
   func setClaudeForceAsk(_ on: Bool) {
     call("claude.forceAsk", ["enabled": .bool(on)])
+  }
+
+  /// Joins every Claude Code session on the Mac, or stops (the daemon edits Claude Code's
+  /// user settings either way, keeping a copy).
+  func setClaudeJoin(_ on: Bool) {
+    call("claude.join", ["enabled": .bool(on)])
   }
 
   func setDeviceBlocked(_ id: String, _ blocked: Bool) async -> Bool {

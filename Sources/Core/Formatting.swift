@@ -109,12 +109,13 @@ public enum Grouping {
   /// its own sessions; each session shows once.
   public static func sessions(ownedBy directory: SharedDirectory, among dirs: [SharedDirectory], from all: [Session]) -> [Session] {
     // Of two shared directories that both hold a session, the longer path is the inner one.
-    let deeper = dirs.filter { $0.id != directory.id && $0.agent == directory.agent && $0.path.count > directory.path.count }
+    let deeper = dirs.filter { $0.id != directory.id && $0.path.count > directory.path.count }
     return all.filter { s in holds(directory, s) && !deeper.contains { holds($0, s) } }
   }
 
+  /// Whether the session lies in the directory. A shared directory is shared for every agent
+  /// (the daemon's shares carry none), so the agent is not compared here: the tab filters.
   private static func holds(_ directory: SharedDirectory, _ session: Session) -> Bool {
-    guard session.agent == directory.agent else { return false }
     let root = directory.path.lowercased()
     let cwd = session.directory.lowercased()
     return cwd == root || cwd.hasPrefix(root + "/")

@@ -18,3 +18,10 @@ version=$(cd "$src" && git describe --always --dirty 2>/dev/null || echo dev)
 lipo -create "$out/lucirund-arm64" "$out/lucirund-amd64" -output "$out/lucirund"
 rm -f "$out/lucirund-arm64" "$out/lucirund-amd64"
 echo "build/lucirund: $(lipo -archs "$out/lucirund") ($version)"
+# lucirund-claude: what Claude Code runs for lucirund (hooks, the in-session helper). It links
+# no network code; the daemon installs it to run inside a sandbox (docs/claude.md).
+(cd "$src" && CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -trimpath -ldflags "-X main.version=$daemon_version+$version" -o "$out/lucirund-claude-arm64" ./cmd/lucirund-claude)
+(cd "$src" && CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -trimpath -ldflags "-X main.version=$daemon_version+$version" -o "$out/lucirund-claude-amd64" ./cmd/lucirund-claude)
+lipo -create "$out/lucirund-claude-arm64" "$out/lucirund-claude-amd64" -output "$out/lucirund-claude"
+rm -f "$out/lucirund-claude-arm64" "$out/lucirund-claude-amd64"
+echo "build/lucirund-claude: $(lipo -archs "$out/lucirund-claude")"

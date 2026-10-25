@@ -112,6 +112,21 @@ public struct WireState: Decodable, Sendable {
     public var found: Bool
     public var version: String?
     public var forceAsk: Bool
+    /// Joining every Claude Code session on the machine (config claudeIntegration): the
+    /// switch, what of it is in Claude Code's settings, and how many sessions' helpers are
+    /// connected. nil from a daemon older than this.
+    public var join: Join?
+  }
+  public struct Join: Decodable, Sendable {
+    public struct Status: Decodable, Sendable {
+      public var hooks: Bool
+      public var mcp: Bool
+      public var helper: Bool
+      public var sandbox: Bool
+    }
+    public var enabled: Bool
+    public var status: Status
+    public var helpers: Int
   }
   public var paired: Bool
   public var owner: String?

@@ -221,10 +221,17 @@ public struct MachineInfo: Hashable, Codable, Sendable {
   public var claudeFound: Bool
   public var claudeVersion: String
   public var claudeForceAsk: Bool
+  /// Whether every Claude Code session on the Mac joins (the settings' switch); nil from a
+  /// daemon that cannot. `claudeJoinProblem` is why it is not (fully) in place while on;
+  /// `claudeJoinHelpers` how many sessions can be typed into from the phone right now.
+  public var claudeJoin: Bool?
+  public var claudeJoinProblem: String
+  public var claudeJoinHelpers: Int
 
   public init(label: String, owner: String, appVersion: String, daemonVersion: String, agentVersion: String, tokenExpiresAt: Date?,
               linkError: String = "", agentError: String = "", tokenRenews: Bool? = nil, tokenRenewError: String = "",
-              claudeFound: Bool = false, claudeVersion: String = "", claudeForceAsk: Bool = false) {
+              claudeFound: Bool = false, claudeVersion: String = "", claudeForceAsk: Bool = false,
+              claudeJoin: Bool? = nil, claudeJoinProblem: String = "", claudeJoinHelpers: Int = 0) {
     self.label = label
     self.owner = owner
     self.appVersion = appVersion
@@ -238,6 +245,9 @@ public struct MachineInfo: Hashable, Codable, Sendable {
     self.claudeFound = claudeFound
     self.claudeVersion = claudeVersion
     self.claudeForceAsk = claudeForceAsk
+    self.claudeJoin = claudeJoin
+    self.claudeJoinProblem = claudeJoinProblem
+    self.claudeJoinHelpers = claudeJoinHelpers
   }
 }
 

@@ -11,8 +11,8 @@ settings:
     # The one place the version lives: the app, its bundled lucirund (scripts/build-daemon.sh)
     # and scripts/release.sh read it here. The build number stays a plain integer that only
     # goes up: Sparkle compares it to decide what is newer (0.1.2 was build 5).
-    MARKETING_VERSION: 0.4.0
-    CURRENT_PROJECT_VERSION: 11
+    MARKETING_VERSION: 0.5.0
+    CURRENT_PROJECT_VERSION: 12
     CODE_SIGN_STYLE: Automatic
     DEVELOPMENT_TEAM: M7ZSWL69E9
     ARCHS: 'arm64 x86_64'
@@ -43,22 +43,24 @@ targets:
     preBuildScripts:
       - name: Build lucirund
         script: "\"$SRCROOT/scripts/build-daemon.sh\""
-        outputFiles: ["$(SRCROOT)/build/lucirund"]
+        outputFiles: ["$(SRCROOT)/build/lucirund", "$(SRCROOT)/build/lucirund-claude"]
         basedOnDependencyAnalysis: false
     postBuildScripts:
       - name: Bundle lucirund
         script: |
           mkdir -p "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH"
-          cp -f "$SRCROOT/build/lucirund" "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH/lucirund"
           set -eu
           identity="${EXPANDED_CODE_SIGN_IDENTITY:--}"
-          if [ "$identity" = "-" ]; then
-            codesign --force --sign - "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH/lucirund"
-          else
-            codesign --force --sign "$identity" --options runtime --timestamp "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH/lucirund"
-          fi
-        inputFiles: ["$(SRCROOT)/build/lucirund"]
-        outputFiles: ["$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/lucirund"]
+          for bin in lucirund lucirund-claude; do
+            cp -f "$SRCROOT/build/$bin" "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH/$bin"
+            if [ "$identity" = "-" ]; then
+              codesign --force --sign - "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH/$bin"
+            else
+              codesign --force --sign "$identity" --options runtime --timestamp "$TARGET_BUILD_DIR/$EXECUTABLE_FOLDER_PATH/$bin"
+            fi
+          done
+        inputFiles: ["$(SRCROOT)/build/lucirund", "$(SRCROOT)/build/lucirund-claude"]
+        outputFiles: ["$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/lucirund", "$(TARGET_BUILD_DIR)/$(EXECUTABLE_FOLDER_PATH)/lucirund-claude"]
       - name: Bundle launch agent
         script: |
           mkdir -p "$TARGET_BUILD_DIR/$CONTENTS_FOLDER_PATH/Library/LaunchAgents"

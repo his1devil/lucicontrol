@@ -22,6 +22,10 @@ public enum Mapping {
     if claude {
       if t.status == "notLoaded" {
         s.activity = "已结束"
+      } else if let locked = t.locked, !locked.isEmpty {
+        // Runs in a terminal but cannot be typed into from the phone (not joined, or no
+        // terminal): watched only.
+        s.activity = "手机只能看"
       } else if let mode = t.mode, !mode.isEmpty {
         s.activity = claudeModeWord(mode)
       }
@@ -63,7 +67,17 @@ public enum Mapping {
                 // The link's error is only news while the link is down.
                 linkError: state.link.online ? "" : state.link.error ?? "", agentError: state.agent.error ?? "",
                 tokenRenews: state.tokenRenews, tokenRenewError: state.tokenRenewError ?? "",
-                claudeFound: state.claude?.found ?? false, claudeVersion: state.claude?.version ?? "", claudeForceAsk: state.claude?.forceAsk ?? false)
+                claudeFound: state.claude?.found ?? false, claudeVersion: state.claude?.version ?? "", claudeForceAsk: state.claude?.forceAsk ?? false,
+                claudeJoin: state.claude?.join?.enabled, claudeJoinProblem: joinProblem(state.claude?.join), claudeJoinHelpers: state.claude?.join?.helpers ?? 0)
+  }
+
+  /// Why joining every Claude session is on but not (fully) in place; empty when it is, or off.
+  public static func joinProblem(_ j: WireState.Join?) -> String {
+    guard let j, j.enabled else { return "" }
+    if !j.status.helper { return "没找到会话助手 lucirund-claude，重装 LuciControl 试试" }
+    if !j.status.sandbox { return "这台 Mac 没有 sandbox-exec，助手关不进沙盒，所以没装" }
+    if !j.status.hooks || !j.status.mcp { return "Claude Code 的设置里少了 lucirund 的 hooks 或助手，一分钟内会自动补上" }
+    return ""
   }
 
   public static func pairing(_ p: WirePair) -> PairingState {

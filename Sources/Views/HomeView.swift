@@ -16,7 +16,9 @@ struct HomeView: View {
       } else if dirs.isEmpty {
         EmptyState(title: "还没有共享的目录", detail: "点左下角「+ 添加目录」，选择要给手机访问的项目")
       } else if model.agent == .claudeCode, model.sessions(for: .claudeCode).isEmpty {
-        EmptyState(title: "还没有 Claude Code 会话", detail: "在共享目录里打开终端，跑 lucirund tty -- claude；会话会出现在这里，手机上也能接上它。")
+        EmptyState(title: "还没有 Claude Code 会话", detail: model.machine?.claudeJoin == true
+          ? "在共享目录里照常运行 claude，会话会出现在这里，手机上也能接上它。"
+          : "在设置里打开「接入 Claude Code」，之后在共享目录里照常运行 claude，会话就会出现在这里。")
       } else {
         FittingScrollView(maxHeight: listMaxHeight) {
           LazyVStack(alignment: .leading, spacing: 0) {

@@ -100,9 +100,12 @@ final class FormattingTests: XCTestCase {
       Session(id: "3", agent: .codex, directory: "/users/k/app", title: "case", state: .running, updatedAt: now.addingTimeInterval(-10), shared: true),
       Session(id: "4", agent: .claudeCode, directory: "/Users/k/App", title: "other agent", state: .waiting, updatedAt: now, shared: true),
     ]
+    // A shared directory is shared for every agent (the daemon's shares carry none): it holds
+    // the Claude session too, and the tab picks its own agent's.
     let mine = Grouping.sessions(in: dir, from: all)
-    XCTAssertEqual(mine.map(\.id), ["1", "3"])
-    XCTAssertEqual(Grouping.ordered(mine).map(\.id), ["3", "1"])
+    XCTAssertEqual(mine.map(\.id), ["1", "3", "4"])
+    XCTAssertEqual(Grouping.ordered(mine.filter { $0.agent == .codex }).map(\.id), ["3", "1"])
+    XCTAssertEqual(mine.filter { $0.agent == .claudeCode }.map(\.id), ["4"], "a Claude session lands in a directory from the daemon")
     let many = (0..<8).map { i in Session(id: "i\(i)", agent: .codex, directory: "/x", title: "", state: .idle, updatedAt: now.addingTimeInterval(Double(-i)), shared: true) }
     let (shown, folded) = Grouping.split(Grouping.ordered(many), visibleIdle: 5)
     XCTAssertEqual(shown.count, 5)

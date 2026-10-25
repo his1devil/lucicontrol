@@ -273,6 +273,13 @@ final class PanelModel {
     backend.setClaudeForceAsk(on)
   }
 
+  /// Whether every Claude Code session on the Mac joins (the daemon's claudeIntegration);
+  /// the switch moves when the daemon's next status says so.
+  func setClaudeJoin(_ on: Bool) {
+    guard let backend else { return }
+    backend.setClaudeJoin(on)
+  }
+
   func togglePause() {
     switch sharing {
     case .sharing, .connecting:

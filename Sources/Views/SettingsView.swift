@@ -45,7 +45,11 @@ struct SettingsView: View {
           if let m = model.machine {
             VStack(alignment: .leading, spacing: 4) {
               SectionLabel(text: "Claude Code")
-              ToggleRow(title: "会话改东西前一律先问", detail: "Bash、Write、Edit 这类工具每次都弹确认，手机才能收到授权卡；本机装了自动放行的 hook 时需要开",
+              if let join = m.claudeJoin {
+                ToggleRow(title: "接入 Claude Code", detail: joinDetail(m, on: join),
+                          isOn: join, enabled: m.claudeFound) { model.setClaudeJoin(!join) }
+              }
+              ToggleRow(title: "会话改东西前一律先问", detail: "只对手机上正开着的会话：Bash、Write、Edit 这类工具每次都弹确认，手机才能收到授权卡；本机装了自动放行的 hook 时需要开",
                         isOn: m.claudeForceAsk, enabled: m.claudeFound) { model.setClaudeForceAsk(!m.claudeForceAsk) }
             }
           }
@@ -106,6 +110,13 @@ struct SettingsView: View {
   }
 
   /// One fact; a long one is cut at the end and shown whole on hover.
+  /// What joining every Claude session does, or why it is not in place yet.
+  private func joinDetail(_ m: MachineInfo, on: Bool) -> String {
+    if on, !m.claudeJoinProblem.isEmpty { return m.claudeJoinProblem }
+    if on { return m.claudeJoinHelpers > 0 ? "已接入：\(m.claudeJoinHelpers) 个会话手机可以发消息。新开的 claude 都会接入" : "已接入：在任何终端里照常运行 claude，会话就会出现在这里和手机上" }
+    return "在任何终端里照常运行 claude，会话就出现在这里和手机上，手机能发消息、批授权。会往 Claude Code 的设置里加 hooks 和一个不联网的会话助手，关掉即删除"
+  }
+
   private func infoRow(_ k: String, _ v: String, attention: Bool = false) -> some View {
     HStack(spacing: 10) {
       Text(k).font(.ui(10.5)).foregroundStyle(DS.ink2).frame(width: 44, alignment: .leading)
