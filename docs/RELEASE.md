@@ -1,8 +1,14 @@
 # LuciControl 发布与更新
 
-更新时间：2026-10-19（凌晨）。当前公开分发版本 0.4.0 (11)，macOS 14+，Universal（arm64 / x86_64）。
+更新时间：2026-10-25（晚）。当前公开分发版本 0.5.0 (12)，macOS 14+，Universal（arm64 / x86_64）。
 
-## 当前公开版本 0.4.0 (11)
+## 当前公开版本 0.5.0 (12)
+
+2026-10-25 晚发布。内置 lucirund 0.5.0：设置里新增「接入 Claude Code」（config `claudeIntegration`）——打开后在任何终端里照常运行 `claude`，会话就出现在面板和手机上，手机能发消息、打断、换模型、批授权；会话是终端自己的进程，用终端的环境，LuciControl 退出或更新不影响它。开关往 `~/.claude/settings.json` 写 hooks、往 `~/.claude.json` 登记会话助手 `lucirund-claude`（和 lucirund 一起在 `Contents/MacOS`），只动自己的条目、先备份，关掉即删除。会话助手不含网络代码，跑在只放行本机 socket 的 macOS 沙盒里；Claude 感知不到手机和中继（拒绝 / 叫停时的说法与终端里相同）；体检列出会话助手的网络连接数。在跑但没接入的会话显示「手机只能看」；「一律先问」只对手机正开着的会话生效；`lucirund tty` 起的会话用发起终端的环境。修复面板 Claude 标签页列不出会话（共享目录按 agent 过滤的老问题，0.3.0 起就有）。说明见 `docs/releases/0.5.0.html`。手机端 Luci Run 0.1.0 (22) 即可使用；把只能看的会话标出来的手机端改动已提交（yptd-mobile-app c48dfe2），随下一版 TestFlight 发。
+
+从干净的已提交源码构建：App `d373402`（标签 `v0.5.0`），后台 `3fb7fb3`，包内 daemon 自报 `lucirund 0.5.0+3fb7fb3`、会话助手自报 `lucirund-claude 0.5.0+3fb7fb3`。App 与 DMG 通过 Developer ID 签名、Apple 公证（App `992fea57-c971-4177-b1df-b624ae072e28`，DMG `a3da6cda-f141-4a0a-9882-482617efde0b`）、staple 与 Gatekeeper；发布校验脚本确认 8 个 Mach-O 均为 Universal、Developer ID、带时间戳和 hardened runtime；更新 ZIP 的 Ed25519 签名用 App 内置公钥验证通过，改动一个字节即失败。Package 测试 24 项、后台 `go test ./...`（含会话助手不链接网络代码、安装器、终端会话接入）通过；手动验证：开关写入 hooks 与助手、终端里新开的 `claude` 接入并在手机上出现、手机发的消息在终端里收到。两个下载渠道的文件匿名完整下载后哈希一致；正式 appcast 已原子切换到 build 12，保留 11、9、8、7、6、5、3（备份 `/root/app/remote/.release-lucicontrol-0.5.0-12/appcast-before.xml`）；中继健康。产物与 `publication.json` 在 `build/releases/0.5.0-12/`。
+
+## 历史版本 0.4.0 (11)
 
 2026-10-19 凌晨发布。内置 lucirund 0.4.0：手机可以接上电脑上的 Claude Code 会话——终端里 `lucirund tty -- claude` 起会话（App 自带这个命令，`~/.local/bin/lucirund` 可软链到包内），手机和终端共享同一条会话：手机发的消息在终端里出现并被回答，终端里敲的提示手机也看得到；Claude 要改文件、跑命令时手机收到授权卡（终端的对话框同时开着，谁先答算谁的）；手机上能换模型和强度（`/model`、`/effort`）、打断回合、发图片；Claude 会话只给机器主人的手机看。面板新增 Claude 标签页（会话逐条开关共享、移除），设置里有「Claude 会话改东西前一律先问」开关（config `claudeForceAsk`；本机装了自动放行的 hook 时打开，手机才能收到授权卡），体检报告 Claude Code 是否安装。说明见 `docs/releases/0.4.0.html`。手机端对应的 Claude 支持在 Luci Run 0.1.0 (22) 里（TestFlight 构建，2026-10-19 09:27 上传）。
 
