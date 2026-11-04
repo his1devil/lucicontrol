@@ -1,8 +1,14 @@
 # LuciControl 发布与更新
 
-更新时间：2026-10-25（晚）。当前公开分发版本 0.5.0 (12)，macOS 14+，Universal（arm64 / x86_64）。
+更新时间：2026-11-05。当前公开分发版本 0.5.1 (13)，macOS 14+，Universal（arm64 / x86_64）。
 
-## 当前公开版本 0.5.0 (12)
+## 当前公开版本 0.5.1 (13)
+
+2026-11-05 凌晨发布。内置 lucirund 0.5.1：Claude Code 回答里提到的图片在手机上显示（Markdown 图片、代码片段里的路径、句子里的路径；相对路径按会话目录找，中文标点紧贴、带空格的 macOS 截图名也认），从对话记录读出的历史也一样；Codex 会话的相对路径图片也按会话目录找。Claude Code 的每次工具调用都报给手机（新的 `tool` 行：Read、Grep、Glob、LS、Task 等，Read 只报行数），改文件带上 diff，TodoWrite 成为计划卡片，计划模式的计划文字也是。App 本身没有改动。说明见 `docs/releases/0.5.1.html`。配合手机端 Luci Run 0.1.0 (24)（2026-11-04 上传 TestFlight）；老版本手机跳过 `tool` 行，照常可用。
+
+从干净的已提交源码构建：App `7b02d97`（标签 `v0.5.1`），后台 `ee7e896`，包内 daemon 自报 `lucirund 0.5.1+ee7e896`、会话助手自报 `lucirund-claude 0.5.1+ee7e896`。App 与 DMG 通过 Developer ID 签名、Apple 公证（App `a6427dca-8a24-430c-adf9-523ac2d1265f`，DMG `44c79241-f415-4683-aecb-d46cfed58cd4`）、staple 与 Gatekeeper；发布校验脚本确认 8 个 Mach-O 均为 Universal、Developer ID、带时间戳和 hardened runtime；更新 ZIP 的 Ed25519 签名用 App 内置公钥对线上清单验证通过，改动一个字节即失败。Package 测试 24 项、后台 `go test ./...` 通过。两个下载渠道的文件匿名完整下载后哈希一致（DMG `c7e0c27c…`，ZIP `16f79ef3…`，`.sha256` `bcaeee53…`）；正式 appcast 从 `b7072657…` 原子切换到 `84bf21e1…`，保留 12、11、9、8、7、6、5、3（备份 `/root/app/remote/.release-lucicontrol-0.5.1-13/appcast-before.xml`）；中继健康。产物与 `publication.json` 在 `build/releases/0.5.1-13/`。
+
+## 历史版本 0.5.0 (12)
 
 2026-10-25 晚发布。内置 lucirund 0.5.0：设置里新增「接入 Claude Code」（config `claudeIntegration`）——打开后在任何终端里照常运行 `claude`，会话就出现在面板和手机上，手机能发消息、打断、换模型、批授权；会话是终端自己的进程，用终端的环境，LuciControl 退出或更新不影响它。开关往 `~/.claude/settings.json` 写 hooks、往 `~/.claude.json` 登记会话助手 `lucirund-claude`（和 lucirund 一起在 `Contents/MacOS`），只动自己的条目、先备份，关掉即删除。会话助手不含网络代码，跑在只放行本机 socket 的 macOS 沙盒里；Claude 感知不到手机和中继（拒绝 / 叫停时的说法与终端里相同）；体检列出会话助手的网络连接数。在跑但没接入的会话显示「手机只能看」；「一律先问」只对手机正开着的会话生效；`lucirund tty` 起的会话用发起终端的环境。修复面板 Claude 标签页列不出会话（共享目录按 agent 过滤的老问题，0.3.0 起就有）。说明见 `docs/releases/0.5.0.html`。手机端 Luci Run 0.1.0 (22) 即可使用；把只能看的会话标出来的手机端改动已提交（yptd-mobile-app c48dfe2），随下一版 TestFlight 发。
 
@@ -94,7 +100,7 @@ xcodebuild -project LuciControl.xcodeproj -scheme LuciControl -configuration Deb
 SPARKLE_TOOLS=/path/to/Sparkle/bin scripts/release.sh
 ```
 
-正式发布默认要求 App 和 daemon 工作树干净。本地候选验证可显式设置 `ALLOW_DIRTY=1`，产物 `source.json` 会标记 dirty，不能将其描述为已经打 tag 的提交产物。每次构建使用唯一且递增的 `RELEASE_BUILD`，脚本拒绝覆盖已有输出目录。版本号只在 `project.yml` 一处（`MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`，现为 0.4.0 / 11）：`release.sh` 的默认值、包内 lucirund 的版本（`build-daemon.sh` 注入，后缀为 daemon 的提交号）都从这里来，`verify-release.py` 拒绝 App 与 daemon 版本不一致的包。build 号是只增不减的整数，Sparkle 用它判断新旧，不能写成 0.3.0（那会小于已发布的 5，0.1.x 的机器就收不到更新）。`RELEASE_VERSION`、`RELEASE_BUILD` 只在临时覆盖时使用。
+正式发布默认要求 App 和 daemon 工作树干净。本地候选验证可显式设置 `ALLOW_DIRTY=1`，产物 `source.json` 会标记 dirty，不能将其描述为已经打 tag 的提交产物。每次构建使用唯一且递增的 `RELEASE_BUILD`，脚本拒绝覆盖已有输出目录。版本号只在 `project.yml` 一处（`MARKETING_VERSION` / `CURRENT_PROJECT_VERSION`，现为 0.5.1 / 13）：`release.sh` 的默认值、包内 lucirund 的版本（`build-daemon.sh` 注入，后缀为 daemon 的提交号）都从这里来，`verify-release.py` 拒绝 App 与 daemon 版本不一致的包。build 号是只增不减的整数，Sparkle 用它判断新旧，不能写成 0.3.0（那会小于已发布的 5，0.1.x 的机器就收不到更新）。`RELEASE_VERSION`、`RELEASE_BUILD` 只在临时覆盖时使用。
 
 脚本执行 Archive / Developer ID Export，检查包内每个 Mach-O 的两种架构、签名、Hardened Runtime 和时间戳，提交 Apple 公证，staple App 和 DMG，验证 Gatekeeper，生成携带更新包 Ed25519 签名的清单。构建过程保留公证结果 JSON、日志和来源记录。签名失败立即终止。
 
@@ -109,6 +115,16 @@ SPARKLE_TOOLS=/path/to/Sparkle/bin scripts/release.sh
 - `export/LuciControl.app`：最终 App。
 
 脚本只准备本机产物，并向 Apple 提交公证；不上传服务器或 GitHub。
+
+## 公开下载（2026-11-05，0.5.1 / 13）
+
+- [安装包：LuciControl 0.5.1 (13) Universal DMG](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.5.1-13-universal.dmg)
+- [更新包 ZIP](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.5.1-13.zip)
+- [GitHub 备用下载与更新说明](https://github.com/his1devil/lucicontrol/releases/tag/v0.5.1)
+- [SHA256 校验文件](https://im.zhanghuanyang.com/lucirund/dist/LuciControl-0.5.1-13.sha256)
+- [自动更新清单](https://im.zhanghuanyang.com/lucirund/dist/appcast.xml)
+
+DMG SHA256：`c7e0c27c9fe27b5913dc4ff9c5949703bdfb3cf5d50decc15180d65810e0c3ac`。ZIP SHA256：`16f79ef3bf9091f08402f351cb28c7f9c7ef016d26a3982047e7c6967092b36c`。
 
 ## 公开下载（2026-10-19，0.4.0 / 11）
 
